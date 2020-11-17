@@ -81,9 +81,10 @@ void onMouse1(int event, int x, int y, int foo, void* p)
 int main(int argc, char** argv)
 {
 	Data D;
-	D.I1 = imread("../data/mistletoe.jpg");
-	D.M1 = imread("../data/mistletoe-alpha.jpg");
-	D.W1 = imread("../data/windows.jpg");
+	string srcDir = "../../..";
+	D.I1 = imread(srcDir + "/data/mistletoe.jpg");
+	D.M1 = imread(srcDir + "/data/mistletoe-alpha.jpg");
+	D.W1 = imread(srcDir + "/data/windows.jpg");
 
 	imshow("Window", D.W1);
 	//imshow("Mistletoe", D.I1);
