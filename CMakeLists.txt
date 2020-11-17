@@ -1,0 +1,9 @@
+CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
+
+FIND_PACKAGE(OpenCV REQUIRED)
+
+PROJECT(ChristmasDecorator)
+
+ADD_EXECUTABLE(windows windows.h windows.cpp)
+TARGET_LINK_LIBRARIES(windows ${OpenCV_LIBS})
+
