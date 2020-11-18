@@ -6,6 +6,8 @@
 #include <vector>
 #include "decorate.h"
 
+const string srcDir = "../../..";
+
 map<Vec3b, int, lessVec3b> getLabels(const Mat3b& src)
 {
     map<Vec3b, int, lessVec3b> palette;
@@ -60,8 +62,8 @@ vector<Mat> getColorsAsColoredMasks(Mat labels, map<Vec3b, int, lessVec3b> label
 
 int main(int argc, char** argv)
 {
-    Mat image = imread("../data/cmp_b0377.jpg");
-    Mat labels = imread("../data/cmp_b0377.png");
+    Mat image = imread(CD::srcDir + "/data/cmp_b0377.jpg");
+    Mat labels = imread(CD::srcDir + "/data/cmp_b0377.png");
     imshow("labels", labels);
     imshow("image", image);
 
@@ -92,9 +94,16 @@ int main(int argc, char** argv)
     {
         Laplacian(single_mask, G, 0);
         addWeighted(image, alpha, G, beta, 0.0, decImage);
-        imshow("Bounding box", decImage);
-        waitKey(0);
+        //imshow("Bounding box", decImage);
+        //waitKey(0);
     }
+
+    // decorate the windows :)
+    decorateWindows(image, labels, image);
+
+    imshow("Decorated Image", image);
+    imwrite(CD::srcDir + "/out/decorated-image.jpg", image);
+    waitKey();
 
     return 0;
 }

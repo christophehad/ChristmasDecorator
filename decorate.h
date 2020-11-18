@@ -1,5 +1,7 @@
 #include <vector>
 #include <opencv2/imgproc/imgproc.hpp>
+#include "ChristmasDecorator.h"
+#include "windows.h"
 
 using namespace cv;
 using namespace std;
