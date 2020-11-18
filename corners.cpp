@@ -249,7 +249,7 @@ vector<Point> harris(const Mat& Ic) {
 			}
 		}
 	}
-	imshow("Harris Corners", dst_norm_scaled);
+	//imshow("Harris Corners", dst_norm_scaled);
 	return corners;
 }
 
