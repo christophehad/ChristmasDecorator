@@ -4,6 +4,5 @@ FIND_PACKAGE(OpenCV REQUIRED)
 
 PROJECT(ChristmasDecorator)
 
-ADD_EXECUTABLE(windows windows.h windows.cpp)
-TARGET_LINK_LIBRARIES(windows ${OpenCV_LIBS})
-
+ADD_EXECUTABLE(decorate decorate.h decorate.cpp windows.cpp windows.h)
+TARGET_LINK_LIBRARIES(decorate ${OpenCV_LIBS})
