@@ -62,8 +62,11 @@ vector<Mat> getColorsAsColoredMasks(Mat labels, map<Vec3b, int, lessVec3b> label
 
 int main(int argc, char** argv)
 {
-    Mat image = imread(CD::srcDir + "/data/cmp_b0377.jpg");
-    Mat labels = imread(CD::srcDir + "/data/cmp_b0377.png");
+    string inputPath1 = "/data/cmp_b0377";
+    string inputPath2 = "/data/cmp_b0001";
+    string inputPath = inputPath1;
+    Mat image = imread(CD::srcDir + inputPath + ".jpg");
+    Mat labels = imread(CD::srcDir + inputPath + ".png");
     imshow("labels", labels);
     imshow("image", image);
 
@@ -85,17 +88,22 @@ int main(int argc, char** argv)
     vector<Mat> masks;
     masks = getColorsAsColoredMasks(labels, labels_map, black, white);
     
-    Mat decImage;
+    Mat decImage, windowsLabels;
     Mat G;
     double alpha = 0.5; double beta; double input;
     image.copyTo(decImage);
     beta = ( 1.0 - alpha );
+
+    int index = 0;
     for (auto single_mask : masks)
     {
         Laplacian(single_mask, G, 0);
         addWeighted(image, alpha, G, beta, 0.0, decImage);
-        //imshow("Bounding box", decImage);
+        imshow("Bounding box", decImage);
+        if (index == WINDOWS_IDX)
+            decImage.copyTo(windowsLabels);
         //waitKey(0);
+        index++;
     }
 
     // decorate the windows :)

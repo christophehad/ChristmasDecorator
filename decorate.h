@@ -6,6 +6,8 @@
 using namespace cv;
 using namespace std;
 
+const int WINDOWS_IDX = 9;
+
 struct lessVec3b
 {
     bool operator()(const Vec3b& lhs, const Vec3b& rhs) const {
