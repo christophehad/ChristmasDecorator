@@ -1,0 +1,20 @@
+#!/bin/bash
+
+echo "Generating decorations for all facades"
+
+pwd
+cd build
+
+for file in ../CMP_facade_DB_base/base/*.png
+do
+
+    name=${file%.png}
+
+    png=$".png"
+    jpg=$".jpg"
+
+    pngname="$name$png"
+    jpgname="$name$jpg"
+    echo "$pngname"
+    ./decorate "$jpgname" "$pngname"
+done
