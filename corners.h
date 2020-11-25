@@ -16,6 +16,15 @@ struct RectRegion {
 	int width;
 };
 
+// 1 % seems the best
+const double cornersMarginThresh = 0.01;
+
+// sometimes a small one (150) detects many duplicate corners in small images
+const int HARRIS_THRESH = 170;
+
+// allow for rect regions to intersect
+const bool WITH_INTERS = true;
+
 // important for debugging
 string type2str(int type);
 
