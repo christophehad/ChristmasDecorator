@@ -226,7 +226,8 @@ Mat canny(const Mat& Ic, float s1, float s2)
 }
 
 vector<Point> harris(const Mat& Ic) {
-	int thresh = 150;
+	// To Tweak According to the Image
+	int thresh = HARRIS_THRESH;
 
 	vector<Point> corners;
 
@@ -249,7 +250,7 @@ vector<Point> harris(const Mat& Ic) {
 			}
 		}
 	}
-	//imshow("Harris Corners", dst_norm_scaled);
+	imshow("Harris Corners", dst_norm_scaled);
 	return corners;
 }
 
@@ -265,8 +266,8 @@ Mat selectColor(const Mat& Ic, Vec3b color) {
 	//cout << type2str(goodMask.type()) << endl << type2str(Ic.type()) << endl;
 	multiply(Ic, goodMask, out);
 
-	//imshow("Mask", goodMask);
-	//imshow("Modified I", Ic);
+	imshow("Mask", goodMask);
+	imshow("Modified I", Ic);
 	return out;
 }
 
@@ -284,25 +285,41 @@ bool isLessByX(const Point& p1, const Point& p2) {
 bool isInAnyRegion(Point p, const vector <RectRegion>& regions) {
 	bool ret = false;
 
-	for (auto& region : regions) {
-		if (region.corner.x <= p.x && p.x <= (region.corner.x + region.width) && region.corner.y <= p.y && p.y <= (region.corner.y + region.height))
-			return true;
+	if (WITH_INTERS) {
+		for (auto& region : regions) {
+			if (region.corner.x < p.x && p.x < (region.corner.x + region.width) && region.corner.y < p.y && p.y < (region.corner.y + region.height))
+				return true;
+		}
+	}
+	else {
+		for (auto& region : regions) {
+			if (region.corner.x <= p.x && p.x <= (region.corner.x + region.width) && region.corner.y <= p.y && p.y <= (region.corner.y + region.height))
+				return true;
+		}
 	}
 	return ret;
 }
 
 // TODO : account for small variations in corners search (and update the startX accordingly)
 // MAYBE? can always check if there's another candidate for handling errors?
-void findRectRegions(vector <Point> pByY, vector <RectRegion>& toFill) {
+void findRectRegions(vector <Point> pByY, vector <RectRegion>& toFill, const Mat & I) {
 	// the vectors pBy.. are the points sorted by ..
 	vector <Point> pByX(pByY);
 	int n = pByY.size();
 	sort(pByX.begin(), pByX.end(), isLessByX);
 
+	int minDim = I.cols < I.rows ? I.cols : I.rows;
+
+	//int xMargin = (int) (cornersMarginThresh * I.cols);
+	//int yMargin = (int) (cornersMarginThresh * I.rows);
+	int xMargin = (int) (cornersMarginThresh * minDim);
+	int yMargin = (int) (cornersMarginThresh * minDim);
+
 	for (int i = 0; i < n; i++) {
 		auto& p = pByY[i];
 		if (!isInAnyRegion(p, toFill)) {
 			int startX = p.x, startY = p.y;
+			Point leftCorner(0, 0), rightCorner(0, 0);
 			int height = 0, width = 0;
 
 			// assume it is an upper left corner => need to find width and height if applicable
@@ -311,8 +328,9 @@ void findRectRegions(vector <Point> pByY, vector <RectRegion>& toFill) {
 			for (int j = i + 1; j < n; j++) {
 				auto& candidate = pByY[j];
 				if (!isInAnyRegion(candidate, toFill)) {
-					if (candidate.x == startX) {
-						height = candidate.y - startY;
+					if (abs(candidate.x - startX) <= xMargin) {
+						int minX = candidate.x < startX ? candidate.x : startX;
+						startX = minX; leftCorner = Point(minX, candidate.y);
 						break;
 					}
 				}
@@ -323,11 +341,18 @@ void findRectRegions(vector <Point> pByY, vector <RectRegion>& toFill) {
 			for (int j = xIdx + 1; j < n; j++) {
 				auto& candidate = pByX[j];
 				if (!isInAnyRegion(candidate, toFill)) {
-					if (candidate.y == startY) {
+					if (abs(candidate.y - startY) <= yMargin) {
+						int minY = candidate.y < startY ? candidate.y : startY;
+						startY = minY; rightCorner = Point(candidate.x, minY);
 						width = candidate.x - startX;
 						break;
 					}
 				}
+			}
+
+			if (leftCorner != Point(0, 0) && rightCorner != Point(0, 0)) {
+				height = leftCorner.y - startY;
+				width = rightCorner.x - startX;
 			}
 
 			if (height != 0 && width != 0) {
@@ -344,9 +369,8 @@ vector<RectRegion> getRegions(const Mat& I, Vec3b color) {
 	// Harris requires the input to be in grayscale
 	Mat forHarris; cvtColor(selectedRegion, forHarris, COLOR_RGB2GRAY);
 	vector <Point> corners = harris(forHarris);
-
 	vector <RectRegion> ret;
-	findRectRegions(corners, ret);
+	findRectRegions(corners, ret, I);
 
 	return ret;
 }

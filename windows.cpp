@@ -45,6 +45,8 @@ void insertMistleToe(const Mat& input, Mat& output, const Mat& mistletoe, const 
 void decorateWindows(const Mat& input, const Mat& labels, Mat& output) {
 	vector <RectRegion> windows = getRegions(labels, CD::windowColor);
 
+	//vector <RectRegion> windows = getRegions(labels, Vec3b(0,255,0)); // trying to decorate from masks
+	
 	Mat mistletoe = imread(mistletoePath);
 	Mat mistletoeAlpha = imread(mistletoeAlphaPath);
 
