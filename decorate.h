@@ -10,9 +10,12 @@ struct lessVec3b
         return (lhs[0] != rhs[0]) ? (lhs[0] < rhs[0]) : ((lhs[1] != rhs[1]) ? (lhs[1] < rhs[1]) : (lhs[2] < rhs[2]));
     }
 };
-Mat increaseBrightness(const Mat& image, double alpha, int beta);
 
-Mat getMaskAsLights(const Mat3b& mask, Mat& lights, vector<Vec3b> lights_color);
+Mat increaseColor(const Mat& image, double scale, int channel);
+
+Mat changeBrightness(const Mat& image, double scale);
+
+void getMaskAsLights(const Mat3b& mask, Mat& image_decorated, Mat& lights, vector<Vec3b> lights_color);
 
 map<Vec3b, int, lessVec3b> getLabels(const Mat3b& src);
 

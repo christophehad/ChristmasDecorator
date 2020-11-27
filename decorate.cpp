@@ -1,5 +1,6 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc.hpp>
+#include <opencv2/intensity_transform.hpp>
 #include <iostream>
 #include <fstream>
 #include <map>
@@ -9,44 +10,148 @@
 
 #include "decorate.h"
 
-Mat increaseBrightness(const Mat& image, double alpha, int beta)
+
+// convert Mat image to HSV and scale V of every pixel by scale
+// changes brightness of image
+Mat changeBrightness(const Mat& image, double scale)
 {  
-    Mat new_image = Mat::zeros( image.size(), image.type() );
-    image.convertTo(new_image, -1, alpha, beta);
+    int m = image.rows, n = image.cols;
+
+    Mat out_bgr(m, n, CV_32FC3);
+    Mat out_bgr8(m, n, CV_8U);
+
+	Mat hsv(m, n, CV_32FC3);
+
+    image.convertTo(hsv, CV_32FC3);
+    cvtColor(hsv, hsv, COLOR_BGR2HSV, 3);
+
+    cout << "type" << hsv.type() << endl;
+
+    int channel = 0;
+    Mat out(m, n, CV_32FC3);
+	for (int i = 0; i < m; i++) {
+		for (int j = 0; j < n; j++) {
+			// retrieve the pixel value at i,j as a Vec3f
+			// overwrite the given channel value x with x+amount, modulo 1 (using fmod)
+			// write it the modified Vec3f to out.
+			Vec3f c = 0;
+			c = hsv.at<Vec3f>(i, j);
+			c[channel] = c[channel];
+			out.at<Vec3f>(i,j) = c * scale;
+		}
+	}
+    
+    cvtColor(out, out_bgr, COLOR_HSV2BGR, 3);
+
+	out_bgr.convertTo(out_bgr8, CV_8U);
+
+    return out_bgr8;
+}
+
+// scale a single color channel of Mat image
+// e.g. for creating a blue shift
+Mat increaseColor(const Mat& image, double scale, int channel)
+{  
+    Mat new_image;
+    image.copyTo(new_image);
+
+    for (int r = 0; r < image.rows; ++r)
+    {
+        for (int c = 0; c < image.cols; ++c)
+        {
+            // do scaling in double
+            unsigned char pixel = (unsigned char) std::min((double)image.at<Vec3b>(r, c)[channel] * scale, 255.0);
+            new_image.at<Vec3b>(r, c)[channel] = pixel;
+        }
+    }
     return new_image;
 }
 
-Mat getMaskAsLights(const Mat3b& mask, Mat& lights, vector<Vec3b> lights_color){
+void getMaskAsLights(const Mat3b& mask, Mat& image_decorated, Mat& lights, vector<Vec3b> lights_color){
     Vec3b black = Vec3b(0,0,0);
 
-    lights = Mat::zeros(mask.rows, mask.cols, CV_8UC3);
-    imshow("mask to decorate", mask);
 
-    for (int r = 0; r < mask.rows; ++r)
+    // extract edges from a single mask
+    Mat3b mask_boundary;
+    Laplacian(mask, mask_boundary, 0);
+
+    lights = Mat::zeros(mask_boundary.rows, mask_boundary.cols, CV_8UC3);
+    Mat lights_glow = Mat::zeros(mask_boundary.rows, mask_boundary.cols, CV_8UC3);
+    //imshow("mask_boundary to decorate", mask_boundary);
+
+
+    // paint circels on mask boundary by choosing a random color from lights_color and shifting them randomly
+    // away from the boundary, skip some pixels to create individual light bulb effects
+    for (int r = 0; r < mask_boundary.rows; ++r)
     {
-        for (int c = 0; c < mask.cols; ++c)
+        for (int c = 0; c < mask_boundary.cols; ++c)
         {
-            Vec3b pixel_color = mask(r, c);
+            Vec3b pixel_color = mask_boundary(r, c);
             if (pixel_color != black)
             {   
                 
-                if ((c % 6== 0) || (r % 6== 0))
+                if ((c % 4== 0) || (r % 4== 0))
                 {
-                    circle(lights, Point(c + (rand()%2),r + (rand()%2)), 2, lights_color[rand()%lights_color.size()], FILLED, LINE_4);
-                    
+                    Vec3b current_color = lights_color[rand()%lights_color.size()];
+                    Point location_light = Point(c + (rand()%2),r + (rand()%2));
+
+                    // create lights
+                    circle(lights, location_light, 2, current_color, FILLED, LINE_4);     
                 }
             }
         }
     }
+
+
+
+    Mat lights_glow_masked;
+    Mat image_glowing;
+    Mat grey_mask;
+    Mat lights_mask;
+    Mat lights_glow_mask;
+
+    cvtColor(mask, grey_mask, COLOR_BGR2GRAY, 1);
+    cvtColor(lights, lights_mask, COLOR_BGR2GRAY, 1);
+
+    // blur lights with filter of different sizes to create a ligth effect
+    // additionally scale the glow to make it visible
+    blur(lights, lights_glow, Size(30,30));
+    lights_glow = lights_glow * 3;
     blur(lights, lights, Size(3,3));
+    lights = lights * 0.7;
+
+
+    // trying out different combination methods
+    // from mask copy to addWeighted
+    cvtColor(lights_glow, lights_glow_mask, COLOR_BGR2GRAY, 1);
+
+    lights_glow.copyTo(lights_glow_masked, grey_mask);
 
     Mat bright_lights;
-    bright_lights = increaseBrightness(lights, 1.0, 50);
-    
-    imshow("lights alone", lights);
-    imshow("bright lights alone", bright_lights);
-    //waitKey(0);
-    return bright_lights;
+
+    max(lights, lights_glow, bright_lights);
+
+    image_decorated.copyTo(image_glowing);
+    lights_glow.copyTo(image_glowing, lights_glow_mask);
+    lights.copyTo(image_decorated, lights_mask);
+
+    double alpha = 0.8;
+    double beta = 0.7;
+    double gamma = 0;
+
+    imshow("image decorated", image_decorated);
+    imshow("image_glowing", image_glowing);
+
+    Mat bright_lights_cropped;
+    bright_lights.copyTo(bright_lights_cropped, grey_mask);
+
+    //addWeighted(image_decorated, alpha, bright_lights_cropped, beta, gamma, image_decorated);
+    //imshow("result cropped", image_decorated);
+
+    addWeighted(image_decorated, alpha, bright_lights, beta, gamma, image_decorated);
+    imshow("result", image_decorated);
+    bright_lights.copyTo(lights);
+
 }
 
 map<Vec3b, int, lessVec3b> getLabels(const Mat3b& src)
@@ -92,9 +197,6 @@ vector<Mat> getColorsAsColoredMasks(Mat labels, map<Vec3b, int, lessVec3b> label
                 }  
             }
         }
-        // cout << "showing: " << color.first << endl;
-        //imshow("Mask",masks);
-        //waitKey(0);
     }
     
     return masks;
@@ -107,15 +209,15 @@ static void usage(char *s, int ntests){
 
 int main(int argc, char *argv[]){
     if(argc < 2){
-        // Tell the user how to run the program
         std::cerr << "Usage: " << argv[0] << " <IMAGEPATH> " << " <LABELPATH> " << std::endl;
         return 1;
     }
     string path_image = argv[1];
     string path_label = argv[2];
 
+    // Path to old images
     // "../data/cmp_b0377.jpg"
-    // ""../data/cmp_b0377.png"
+    // "../data/cmp_b0377.png"
 
     Mat image = imread(path_image);
     Mat labels = imread(path_label);
@@ -143,30 +245,48 @@ int main(int argc, char *argv[]){
     
     Mat decImage;
     Mat G;
-    double alpha = 0.6; double beta; double input;
-    image.copyTo(decImage);
-    beta = ( 1.0 - alpha );
 
     Mat lights;
     Mat bright_image;
+    Mat bright_blue;
     Mat frame;
+
+
+    // define the colors of the lights to be added
+    // orange, red, yellow
+    // vector<Vec3b> lights_colors = {Vec3b(0,69,255), Vec3b(0,165,255), Vec3b(51,255,255)};
+
+    // red, yellow, blue, green
     vector<Vec3b> lights_colors = {Vec3b(0,255,0), Vec3b(255,0,0), Vec3b(0,0,255), Vec3b(0,255,255)};
+
 
     int imcount = 0;
     time_t timer;
+
+    Mat image_blue;
+    image.copyTo(image_blue);
+
+    image_blue = increaseColor(image, 1.4, 0);
+    
+
     for (auto single_mask : masks)
     {
-        Laplacian(single_mask, G, 0);
-        getMaskAsLights(G, lights, lights_colors);
-        addWeighted(image, alpha, lights, beta, 0.0, decImage);
-        bright_image = increaseBrightness(decImage, 1.0, 30);
-        imshow("Bounding box", decImage);
+        image_blue = increaseColor(image, 1.4, 0);
+        intensity_transform::gammaCorrection(image_blue, bright_blue, 3);
+        imshow("gammacorrection", bright_blue);
+        
+
+        // replace edges from mask by lights with lights_colors
+        getMaskAsLights(single_mask, bright_blue, lights, lights_colors);
+
+        imshow("Bounding box", bright_blue);
+        //imshow("dec", decImage);
+        waitKey(0);
 
         // sharpen image
-        GaussianBlur(decImage,frame, cv::Size(0, 0), 3);
-        addWeighted(decImage, 1.5, frame, -0.5, 0, frame);
+        //GaussianBlur(decImage,frame, cv::Size(0, 0), 3);
+        //addWeighted(decImage, 1.5, frame, -0.5, 0, frame);
         //imshow("sharpened image", frame);
-
 
         // save image to file with unique name
         time_t t = time(0);   // get time now
@@ -177,7 +297,7 @@ int main(int argc, char *argv[]){
         result_path.append(buffer);
         result_path.append(to_string(imcount));
         result_path.append(".png");
-        imwrite(result_path, frame);
+        //imwrite(result_path, frame);
 
         imcount++;
     }
