@@ -15,7 +15,7 @@ Mat increaseColor(const Mat& image, double scale, int channel);
 
 Mat changeBrightness(const Mat& image, double scale);
 
-void getMaskAsLights(const Mat3b& mask, Mat& image_decorated, Mat& lights, vector<Vec3b> lights_color);
+void getMaskAsLights(const Mat3b& mask, Mat& image_decorated, Mat& lights, vector<Vec3b> lights_color, bool crop_to_mask);
 
 map<Vec3b, int, lessVec3b> getLabels(const Mat3b& src);
 
