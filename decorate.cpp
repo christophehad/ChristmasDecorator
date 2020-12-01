@@ -6,8 +6,6 @@
 #include <vector>
 #include "decorate.h"
 
-const string srcDir = "../../..";
-
 map<Vec3b, int, lessVec3b> getLabels(const Mat3b& src)
 {
     map<Vec3b, int, lessVec3b> palette;
