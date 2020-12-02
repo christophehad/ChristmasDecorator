@@ -311,13 +311,27 @@ int main(int argc, char *argv[]){
         cout << "Color: " << color.first << " \t - Area: " << 100.f * float(color.second) / float(area) << "%" << endl;
     }
 
+    Vec3b background_color = Vec3b(170,0,0);
+
     // extract each color as mask with colors black and white
     Vec3b black = Vec3b(0,0,0);
-    Vec3b white = Vec3b(0,255,0);
+    Vec3b white = Vec3b(255,255,255);
 
     vector<Mat> masks;
+
+    // TODO: change to grey masks
     masks = getColorsAsColoredMasks(quantized_labels, labels_map, black, white);
-    cout << "got colors as masks" << endl;
+
+    //  ASSUMPTION: background is biggest label
+    map<Vec3b, int, lessVec3b> background_map;
+    background_map[background_color] = 0;
+    vector<Mat> background_mask;
+    background_mask = getColorsAsColoredMasks(quantized_labels, background_map, white, black);
+
+
+    imshow("background mask", background_mask[0]);
+    waitKey(0);
+    
     
     Mat decImage;
     Mat G;
@@ -342,14 +356,28 @@ int main(int argc, char *argv[]){
     image.copyTo(image_blue);
 
     image_blue = increaseColor(image, 1.4, 0);
+    image_blue = increaseColor(image, 3.0, 0);
 
-    bool crop_lights_to_labels = false;
+    bool crop_lights_to_labels = true;
 
     for (auto single_mask : masks)
     {
+
+        imshow("single mask", single_mask);
+
+        Mat single_mask_deblurred;
+        blur( single_mask, single_mask, Size(5,5) );
+        fastNlMeansDenoisingColored(single_mask,single_mask_deblurred, 10, 10);
+        //Canny( single_mask, single_mask_deblurred, 254, 254 ,7,0);
+        
+        imshow("single mask denoised", single_mask_deblurred);
         image_blue = increaseColor(image, 1.4, 0);
-        intensity_transform::gammaCorrection(image_blue, bright_blue, 3);
+        intensity_transform::gammaCorrection(image_blue, bright_blue, 4);
+        
         imshow("gammacorrection", bright_blue);
+        Mat bright_blue_bg;
+        addWeighted(bright_blue, 0.9, background_mask[0], 0.5, 0, bright_blue_bg);
+        imshow("background darkened", bright_blue_bg);
         //imwrite("../results/image_neutral.png", image);
         //imwrite("../results/image_dark.png", bright_blue);
         
