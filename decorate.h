@@ -11,6 +11,8 @@ struct lessVec3b
     }
 };
 
+void quantizeImageWithKmeans(const Mat& image, Mat quantized_image, int nmb_clusters);
+
 Mat increaseColor(const Mat& image, double scale, int channel);
 
 Mat changeBrightness(const Mat& image, double scale);

@@ -1,6 +1,8 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/intensity_transform.hpp>
+#include <opencv2/core.hpp>
+#include <opencv2/photo.hpp>
 #include <iostream>
 #include <fstream>
 #include <map>
@@ -9,6 +11,52 @@
 #include <time.h>
 
 #include "decorate.h"
+
+
+/** Quantize image with kmeans
+ * adapted from https://stackoverflow.com/questions/9575652/opencv-using-k-means-to-posterize-an-image
+ * and https://stackoverflow.com/questions/49710006/fast-color-quantization-in-opencv
+ * 
+ */
+void quantizeImageWithKmeans(const Mat& image, Mat quantized_image, int nmb_clusters)
+{
+    Mat img;
+    image.copyTo(img);
+    img.convertTo(img, CV_32F);
+
+    // reshape into featurevector to apply kmeans
+    int origRows = img.rows;
+    Mat colVec = img.reshape(1, img.rows*img.cols); // change to a Nx3 column vector
+    Mat colVecD, bestLabels, centers, clustered;
+    int attempts = 5;
+    double eps = 0.001;
+    colVec.convertTo(colVecD, CV_32FC3); // convert to floating point
+
+    double compactness = kmeans(colVecD, nmb_clusters, bestLabels, 
+            TermCriteria( TermCriteria::EPS+TermCriteria::COUNT, attempts, eps), 
+            attempts, KMEANS_PP_CENTERS, centers);
+
+    Mat labelsImg = bestLabels.reshape(1, origRows); // single channel image of labels
+
+    labelsImg.convertTo(labelsImg, CV_8U);
+    centers.convertTo(centers, CV_8U);
+
+    // assign each pixel to its corrresponding centroid
+    for (int r = 0; r < labelsImg.rows; ++r)
+    {
+        for (int c = 0; c < labelsImg.cols; ++c)
+        {
+            int currlabel = labelsImg.at<uchar>(r,c);
+            Vec3b center_color = Vec3b(centers.at<uchar>(currlabel, 0), centers.at<uchar>(currlabel, 1), centers.at<uchar>(currlabel, 2));
+            quantized_image.at<Vec3b>(r,c) = center_color;
+        }
+    }
+    // cout << "Compactness = " << compactness << endl;
+    imshow("not quantized", image);
+    imshow("quantized", quantized_image);
+
+    // if you would denoise here, all process of quantizin is lost
+}
 
 
 /** convert Mat image to HSV and scale V of every pixel by scale
@@ -168,6 +216,7 @@ map<Vec3b, int, lessVec3b> getLabels(const Mat3b& src)
             Vec3b color = src(r, c);
             if (palette.count(color) == 0)
             {
+
                 palette[color] = 1;
             }
             else
@@ -239,27 +288,36 @@ int main(int argc, char *argv[]){
         return EXIT_FAILURE;
     }
 
-    imshow("labels", labels);
-    imshow("image", image);
+    //imshow("labels", labels);
+    //imshow("image", image);
+
+
+
+    // quantize labels
+    Mat quantized_labels;
+    labels.copyTo(quantized_labels);
+    int nmb_of_clusters = 12;
+    quantizeImageWithKmeans(labels, quantized_labels, nmb_of_clusters);
 
     // Get palette
     // taken from: https://stackoverflow.com/questions/35479344/how-to-get-a-color-palette-from-an-image-using-opencv
-    map<Vec3b, int, lessVec3b> labels_map = getLabels(labels);
+    map<Vec3b, int, lessVec3b> labels_map = getLabels(quantized_labels);
 
     // Print palette
     int area = image.rows * image.cols;
 
-    // for (auto color : labels_map)
-    // {
-    //     cout << "Color: " << color.first << " \t - Area: " << 100.f * float(color.second) / float(area) << "%" << endl;
-    // }
+    for (auto color : labels_map)
+    {
+        cout << "Color: " << color.first << " \t - Area: " << 100.f * float(color.second) / float(area) << "%" << endl;
+    }
 
     // extract each color as mask with colors black and white
     Vec3b black = Vec3b(0,0,0);
     Vec3b white = Vec3b(0,255,0);
 
     vector<Mat> masks;
-    masks = getColorsAsColoredMasks(labels, labels_map, black, white);
+    masks = getColorsAsColoredMasks(quantized_labels, labels_map, black, white);
+    cout << "got colors as masks" << endl;
     
     Mat decImage;
     Mat G;
@@ -285,9 +343,8 @@ int main(int argc, char *argv[]){
 
     image_blue = increaseColor(image, 1.4, 0);
 
-    bool crop_lights_to_labels = true;
+    bool crop_lights_to_labels = false;
 
-    
     for (auto single_mask : masks)
     {
         image_blue = increaseColor(image, 1.4, 0);
