@@ -55,6 +55,7 @@ Mat perspTransform(const Mat& input, vector<Point2f> & selection, string xmlPath
 	Mat warpM = getPerspectiveTransform(source, destination);
 	cout << "Warp Matrix\n" << warpM << endl;
 	FileStorage file(xmlPath, FileStorage::WRITE);
+	file << "dim" << Size(input.rows, input.cols);
 	file << "warp" << warpM;
 	
 	Mat transformedM = Mat::zeros(input.rows + offset, input.cols + offset,input.type());
@@ -95,6 +96,7 @@ void perspOnMouse(int event, int x, int y, int foo, void* p)
 			Mat alignedImg = perspTransformWithWarp(D->I, warp);
 			imshow("Aligned image", alignedImg);
 			imwrite(D->outPath, alignedImg);
+			D->out = alignedImg;
 		}
 
 	}
@@ -103,6 +105,7 @@ void perspOnMouse(int event, int x, int y, int foo, void* p)
 		Mat alignedImg = perspTransform(D->I, D->selection, D->inPath + ".xml");
 		imshow("Aligned image", alignedImg);
 		imwrite(D->outPath, alignedImg);
+		D->out = alignedImg;
 	}
 
 }
@@ -110,9 +113,8 @@ void perspOnMouse(int event, int x, int y, int foo, void* p)
 // Use the left mouse button to add the four corner points (starting from upper-left and going clockwise)
 // Use the right mouse button to generate the warped image using the selection
 // Use the left mouse button and double-click to retrieve the previous pre-computed warp
-void interactivePerspTransform(const Mat& input, string inPath, string outPath) {
+void interactivePerspTransform(const Mat& input, string inPath, string outPath, DataAlign & D) {
 	vector<Point2f> selection;
-	DataAlign D; 
 	D.selection = selection; D.inPath = inPath; D.outPath = outPath;
 	input.copyTo(D.I); input.copyTo(D.tmp);
 	imshow("Interactive input", input);
@@ -120,6 +122,25 @@ void interactivePerspTransform(const Mat& input, string inPath, string outPath) 
 	setWindowProperty("Interactive input", WND_PROP_FULLSCREEN, WINDOW_FULLSCREEN);
 	setMouseCallback("Interactive input", perspOnMouse, &D);
 	waitKey();
+}
+
+Mat restorePerspective(const Mat & input, string xmlPath) {
+	Mat restoredImage;
+	FileStorage file(xmlPath, FileStorage::READ);
+	if (!file.isOpened())
+	{
+		cerr << "failed to open " << xmlPath << endl;
+	}
+	else {
+		Mat warp;  file["warp"] >> warp;
+		Size origSize; file["dim"] >> origSize;
+
+		restoredImage = Mat::zeros(origSize, input.type());
+		warpPerspective(input, restoredImage, warp, origSize, INTER_LINEAR + WARP_INVERSE_MAP, BORDER_TRANSPARENT);
+		imshow("Restored image", restoredImage);
+		
+	}
+	return restoredImage;
 }
 
 int mainAlign() {
@@ -140,7 +161,10 @@ int mainAlign() {
 	//Mat alignedImg = transformWithTemplate(inputToAlign, inputTemplate);
 	//imshow("Aligned image", alignedImg);
 
-	interactivePerspTransform(inputToAlign,CD::srcDir + inputPath,outputPath);
+	DataAlign D;
+	interactivePerspTransform(inputToAlign,CD::srcDir + inputPath,outputPath,D);
+	restorePerspective(D.out, D.inPath + ".xml");
+	waitKey();
 
 	return 0;
 }

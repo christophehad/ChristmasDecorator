@@ -2,6 +2,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include "ChristmasDecorator.h"
 #include "windows.h"
+#include "align.h"
 
 using namespace cv;
 using namespace std;

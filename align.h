@@ -12,10 +12,15 @@ using namespace std;
 const int WARP_OFFSET = 100;
 
 struct DataAlign {
-	Mat I, tmp;
+	Mat I, tmp, out;
 	vector<Point2f> selection;
 	string inPath, outPath;
 };
 
 // main interactive function for selecting the input region to be warped
-void interactivePerspTransform(const Mat& input, string inPath, string outPath);
+void interactivePerspTransform(const Mat& input, string inPath, string outPath, DataAlign & D);
+
+// function to restore the initial perspective from the saved warp matrix in .xml file
+Mat restorePerspective(const Mat& input, string xmlPath);
+
+int mainAlign();
