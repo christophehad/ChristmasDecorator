@@ -129,6 +129,110 @@ Mat increaseColor(const Mat& image, double scale, int channel)
     return new_image;
 }
 
+void getMaskAsGirlandes(const Mat3b& mask, Mat& image_decorated, Mat& lights, vector<Vec3b> lights_color, bool crop_to_mask){
+    Vec3b black = Vec3b(0,0,0);
+
+    // extract edges from a single mask
+    Mat3b mask_boundary;
+    int m = mask.rows, n = mask.cols;
+
+    // Image Gradient computation in x direction
+    Sobel(mask, mask_boundary,0, 0, 1, 1);
+    double mini, maxi;
+    minMaxIdx(mask_boundary, &mini, &maxi);
+    threshold(mask_boundary, mask_boundary, 254, 255, THRESH_BINARY);
+    imshow("mask_boundary", mask_boundary);waitKey(0);
+
+    lights = Mat::zeros(mask_boundary.rows, mask_boundary.cols, CV_8UC3);
+
+    // hang guirlands from horizontal edges
+    int color_ind = 0;
+    int maximal_guirland_length = 8;
+    for (int r = 0; r < mask_boundary.rows; r++)
+    {
+        for (int c = 0; c < mask_boundary.cols; c++)
+        {
+            Vec3b pixel_color = mask_boundary(r, c);
+            
+            if (pixel_color != black)
+            {   
+                if ((c % 10 == 0))
+                {
+                    // you don't want to many lights
+                    // handles case when edge is lighted s.t. not two many lights are coming
+                    
+                    // create lights
+                    Vec3b current_color = lights_color[color_ind%lights_color.size()];
+                    int guirland_length = rand( ) % maximal_guirland_length;
+                    for(int ii = 0; ii < maximal_guirland_length; ii++)
+                    {
+                        Point location_light = Point(c, r + (ii * 3));
+                        circle(lights, location_light, 1, current_color);
+                    }
+                    
+                    color_ind++;   
+                }
+            }
+        }
+    }
+
+    Mat grey_mask;
+    Mat lights_mask;
+    Mat bright_lights;
+    Mat bright_lights_cropped;
+    Mat grey_mask_smoothed;
+
+    cvtColor(mask, grey_mask, COLOR_BGR2GRAY, 1);
+    cvtColor(lights, lights_mask, COLOR_BGR2GRAY, 1);
+
+    // blur lights with filter of different sizes to create a light effect
+    // additionally scale the glow to make it visible
+    Mat lights_glow, lights_glow1, lights_glow2, lights_glow3;
+    blur(lights, lights, Size(3,3));
+    blur(lights,lights_glow, Size(5,5));
+    blur(lights,lights_glow1, Size(6,6));
+    blur(lights,lights_glow2, Size(10,10));
+    blur(lights,lights_glow3, Size(30,30));
+    lights = lights * 3;
+    lights_glow = lights_glow * 4;
+    lights_glow1 = lights_glow1 * 5;
+    lights_glow2 = lights_glow2 * 7;
+    lights_glow3 = lights_glow3 * 10;
+
+    // superpose lights and glow
+    max(lights, lights_glow1, lights);
+    max(lights, lights_glow2, lights);
+    max(lights, lights_glow3, lights);
+    max(lights, lights_glow, bright_lights);
+    blur(bright_lights, bright_lights, Size(1,1));
+    // imshow("bright_lights", bright_lights);
+    // waitKey(0);
+
+    // copy the lights separately to image to make them more bright
+    lights.copyTo(image_decorated, lights_mask);
+
+    double alpha = 0.8;
+    double beta = 0.7;
+    double gamma = 0;
+
+    // smooth the mask to create smoother boundaries when lights and glow are cropped
+
+    blur(grey_mask, grey_mask_smoothed, Size(10,10));
+
+    bright_lights.copyTo(bright_lights_cropped, grey_mask_smoothed);
+
+    if (crop_to_mask)
+    {
+        addWeighted(image_decorated, alpha, bright_lights_cropped, beta, gamma, image_decorated);
+        bright_lights_cropped.copyTo(lights);
+    }
+    else
+    {
+        addWeighted(image_decorated, alpha, bright_lights, beta, gamma, image_decorated);
+        bright_lights.copyTo(lights);
+    }
+}
+
 /** Decorates image with lights according to boundaries given in mask
  * @params: mask: where on boundaries of mask, the lights are applied
  *          image_decorated: image to be decorated
@@ -142,6 +246,8 @@ void getMaskAsLights(const Mat3b& mask, Mat& image_decorated, Mat& lights, vecto
     // extract edges from a single mask
     Mat3b mask_boundary;
     Laplacian(mask, mask_boundary, 0);
+    threshold(mask_boundary, mask_boundary, 10, 255, THRESH_BINARY);
+    imshow("mask_boundary", mask_boundary);waitKey(0);
 
     lights = Mat::zeros(mask_boundary.rows, mask_boundary.cols, CV_8UC3);
     // imshow("maskbondary", mask_boundary);
@@ -157,15 +263,15 @@ void getMaskAsLights(const Mat3b& mask, Mat& image_decorated, Mat& lights, vecto
             
             if (pixel_color != black)
             {   
-                if ((c % 10 == 0) || (r % 10 == 0))
+                if ((c % 10 == 0) ^ (r % 10 == 0))
                 {
-                    // TODO: always change color
-                    
+                    // you don't want to many lights
+                    // handles case when edge is lighted s.t. not two many lights are coming
                     Vec3b current_color = lights_color[color_ind%lights_color.size()];
                     Point location_light = Point(c + (rand()%2),r + (rand()%2));
                     // create lights
                     circle(lights, location_light, 1, current_color);
-                    color_ind++;     
+                    color_ind++;   
                 }
             }
         }
@@ -327,8 +433,6 @@ int main(int argc, char *argv[]){
     quantizeImageWithKmeans(image, quantized_image, 12);
 
     
-    
-
     // int area = image.rows * image.cols;
     // for (auto color : image_map)
     // {
@@ -448,14 +552,17 @@ int main(int argc, char *argv[]){
         Mat single_mask_deblurred;
         blur( single_mask, single_mask, Size(5,5));
         fastNlMeansDenoisingColored(single_mask,single_mask_deblurred, 10, 10);
-        imshow("mask deblurred", single_mask_deblurred);
+        // get mask where gradient is smaller than threshhold
+        threshold(single_mask_deblurred, single_mask_deblurred, 5, 255, THRESH_BINARY);
+        imshow("mask deblurred", single_mask_deblurred);waitKey(0);
 
         // do blueshift and gammacorrection
         image_blueshifted = increaseColor(image_darksky, 1.2, 0);
         intensity_transform::gammaCorrection(image_blueshifted, image_blueshifted_gamma_corrected, 3);
         
         // replace edges from mask by lights with lights_colors
-        getMaskAsLights(single_mask, image_blueshifted_gamma_corrected, lights, lights_colors, crop_lights_to_labels);
+        //getMaskAsLights(single_mask, image_blueshifted_gamma_corrected, lights, lights_colors, crop_lights_to_labels);
+        getMaskAsGirlandes(single_mask, image_blueshifted_gamma_corrected, lights, lights_colors, crop_lights_to_labels);
 
         imshow("Decorated image", image_blueshifted_gamma_corrected); waitKey(0);
 

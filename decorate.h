@@ -16,6 +16,7 @@ void quantizeImageWithKmeans(const Mat& image, Mat quantized_image, int nmb_clus
 Mat increaseColor(const Mat& image, double scale, int channel);
 
 Mat changeHSVchannel(const Mat& image, double scale, int channel);
+void getMaskAsGirlandes(const Mat3b& mask, Mat& image_decorated, Mat& lights, vector<Vec3b> lights_color, bool crop_to_mask);
 
 void getMaskAsLights(const Mat3b& mask, Mat& image_decorated, Mat& lights, vector<Vec3b> lights_color, bool crop_to_mask);
 
