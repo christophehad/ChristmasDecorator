@@ -3,15 +3,33 @@
 #include <opencv2/intensity_transform.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/photo.hpp>
+#include <opencv2/video/background_segm.hpp>
 #include <iostream>
 #include <fstream>
 #include <map>
 #include <vector>
 #include <stdlib.h>
 #include <time.h>
-
 #include "decorate.h"
 
+void calculateGradientOfImage(const Mat& image, Mat Ix, Mat Iy, Mat G)
+{
+    int m = image.rows, n = image.cols;
+    // Image Gradient computation
+	// Browse the rows and columns of the image and compute gradients using finite differences
+    Mat image_grey;
+    cvtColor(image, image_grey, COLOR_BGR2GRAY);
+    Sobel(image_grey, Ix, CV_32FC1, 1, 0);
+    Sobel(image_grey, Iy, CV_32FC1, 0, 1);
+	for (int i = 0; i < m; i++) {
+		for (int j = 0; j < n; j++) {
+			float ix, iy;
+			ix = Ix.at<float>(i, j);
+			iy = Iy.at<float>(i, j);
+			G.at<float>(i, j) = sqrt(ix*ix + iy * iy);
+		}
+	}
+}
 
 /** Quantize image with kmeans
  * adapted from https://stackoverflow.com/questions/9575652/opencv-using-k-means-to-posterize-an-image
@@ -51,20 +69,15 @@ void quantizeImageWithKmeans(const Mat& image, Mat quantized_image, int nmb_clus
             quantized_image.at<Vec3b>(r,c) = center_color;
         }
     }
-    // cout << "Compactness = " << compactness << endl;
-    imshow("not quantized", image);
-    imshow("quantized", quantized_image);
-
-    // if you would denoise here, all process of quantizin is lost
+    // if you would denoise here, all process of quantizing is lost
 }
 
 
 /** convert Mat image to HSV and scale V of every pixel by scale
  *  causes change of brightness of image
  */ 
-Mat changeBrightness(const Mat& image, double scale)
+Mat changeHSVchannel(const Mat& image, double scale, int channel)
 {  
-
     int m = image.rows, n = image.cols;
 
     Mat out_bgr(m, n, CV_32FC3);
@@ -75,7 +88,6 @@ Mat changeBrightness(const Mat& image, double scale)
     image.convertTo(hsv, CV_32FC3);
     cvtColor(hsv, hsv, COLOR_BGR2HSV, 3);
 
-    int channel = 0;
     Mat out(m, n, CV_32FC3);
 	for (int i = 0; i < m; i++) {
 		for (int j = 0; j < n; j++) {
@@ -84,15 +96,14 @@ Mat changeBrightness(const Mat& image, double scale)
 			// write it the modified Vec3f to out.
 			Vec3f c = 0;
 			c = hsv.at<Vec3f>(i, j);
-			c[channel] = c[channel];
-			out.at<Vec3f>(i,j) = c * scale;
+			c[channel] = c[channel] * scale;
+			out.at<Vec3f>(i,j) = c;
 		}
 	}
     
     cvtColor(out, out_bgr, COLOR_HSV2BGR, 3);
 
-	out_bgr.convertTo(out_bgr8, CV_8U);
-
+	out_bgr.convertTo(out_bgr8, CV_8UC3);
     return out_bgr8;
 }
 /** scale a single color channel of Mat image
@@ -133,26 +144,28 @@ void getMaskAsLights(const Mat3b& mask, Mat& image_decorated, Mat& lights, vecto
     Laplacian(mask, mask_boundary, 0);
 
     lights = Mat::zeros(mask_boundary.rows, mask_boundary.cols, CV_8UC3);
-    Mat lights_glow = Mat::zeros(mask_boundary.rows, mask_boundary.cols, CV_8UC3);
-
+    // imshow("maskbondary", mask_boundary);
 
     // paint circels on mask boundary by choosing a random color from lights_color and shifting them randomly
     // away from the boundary, skip some pixels to create individual light bulb effects
-    for (int r = 0; r < mask_boundary.rows; ++r)
+    int color_ind = 0;
+    for (int r = 0; r < mask_boundary.rows; r++)
     {
-        for (int c = 0; c < mask_boundary.cols; ++c)
+        for (int c = 0; c < mask_boundary.cols; c++)
         {
             Vec3b pixel_color = mask_boundary(r, c);
+            
             if (pixel_color != black)
             {   
-                
-                if ((c % 4== 0) || (r % 4== 0))
+                if ((c % 10 == 0) || (r % 10 == 0))
                 {
-                    Vec3b current_color = lights_color[rand()%lights_color.size()];
+                    // TODO: always change color
+                    
+                    Vec3b current_color = lights_color[color_ind%lights_color.size()];
                     Point location_light = Point(c + (rand()%2),r + (rand()%2));
-
                     // create lights
-                    circle(lights, location_light, 2, current_color, FILLED, LINE_4);     
+                    circle(lights, location_light, 1, current_color);
+                    color_ind++;     
                 }
             }
         }
@@ -169,13 +182,26 @@ void getMaskAsLights(const Mat3b& mask, Mat& image_decorated, Mat& lights, vecto
 
     // blur lights with filter of different sizes to create a light effect
     // additionally scale the glow to make it visible
-    blur(lights, lights_glow, Size(30,30));
-    lights_glow = lights_glow * 3;
+    Mat lights_glow, lights_glow1, lights_glow2, lights_glow3;
     blur(lights, lights, Size(3,3));
-    lights = lights * 0.7;
+    blur(lights,lights_glow, Size(5,5));
+    blur(lights,lights_glow1, Size(6,6));
+    blur(lights,lights_glow2, Size(10,10));
+    blur(lights,lights_glow3, Size(30,30));
+    lights = lights * 3;
+    lights_glow = lights_glow * 4;
+    lights_glow1 = lights_glow1 * 5;
+    lights_glow2 = lights_glow2 * 7;
+    lights_glow3 = lights_glow3 * 10;
 
     // superpose lights and glow
+    max(lights, lights_glow1, lights);
+    max(lights, lights_glow2, lights);
+    max(lights, lights_glow3, lights);
     max(lights, lights_glow, bright_lights);
+    blur(bright_lights, bright_lights, Size(1,1));
+    // imshow("bright_lights", bright_lights);
+    // waitKey(0);
 
     // copy the lights separately to image to make them more bright
     lights.copyTo(image_decorated, lights_mask);
@@ -291,56 +317,118 @@ int main(int argc, char *argv[]){
     //imshow("labels", labels);
     //imshow("image", image);
 
-
-
     // quantize labels
-    Mat quantized_labels;
+    Mat quantized_labels, quantized_image;
+    image.copyTo(quantized_image);
     labels.copyTo(quantized_labels);
     int nmb_of_clusters = 12;
-    quantizeImageWithKmeans(labels, quantized_labels, nmb_of_clusters);
 
+    quantizeImageWithKmeans(labels, quantized_labels, nmb_of_clusters);
+    quantizeImageWithKmeans(image, quantized_image, 12);
+
+    
+    
+
+    // int area = image.rows * image.cols;
+    // for (auto color : image_map)
+    // {
+    //     cout << "Color: " << color.first << " \t - Area: " << 100.f * float(color.second) / float(area) << "%" << endl;
+    // }
+
+    
     // Get palette
     // taken from: https://stackoverflow.com/questions/35479344/how-to-get-a-color-palette-from-an-image-using-opencv
     map<Vec3b, int, lessVec3b> labels_map = getLabels(quantized_labels);
-
-    // Print palette
-    int area = image.rows * image.cols;
-
-    for (auto color : labels_map)
-    {
-        cout << "Color: " << color.first << " \t - Area: " << 100.f * float(color.second) / float(area) << "%" << endl;
-    }
-
-    Vec3b background_color = Vec3b(170,0,0);
 
     // extract each color as mask with colors black and white
     Vec3b black = Vec3b(0,0,0);
     Vec3b white = Vec3b(255,255,255);
 
+    // replace sky
+    vector<Mat> img_patches;
     vector<Mat> masks;
+    Mat image_changed;
+    
+    float old_percentage = 0.0;
+    float percentage;
+
+    // calculate gradient of image
+    int m = image.rows, n = image.cols;
+	Mat Ix(m, n, CV_32F), Iy(m, n, CV_32F), G(m, n, CV_32F);
+    calculateGradientOfImage(image, Ix, Iy, G);
+
+    Mat gradient_char, gradient_mask;
+
+    // smooth gradient
+    blur(G, G, Size(5,5));
+    G.convertTo(gradient_char, CV_8U);
+    imshow("gradient val", gradient_char);waitKey(0);
+
+    // get mask where gradient is smaller than threshhold
+    threshold(gradient_char, gradient_mask, 5, 255, THRESH_BINARY_INV);
+    imshow("gradient mask", gradient_mask); waitKey(0);
+    // only consider part of image where gradient is really smooth and now find color of sky
+
+    Mat image_with_small_gradient = Mat::zeros(image.rows, image.cols, CV_8UC3);
+
+    quantized_image.copyTo(image_with_small_gradient, gradient_mask);
+    map<Vec3b, int, lessVec3b> image_map = getLabels(image_with_small_gradient);
+    imshow("quantized image", quantized_image);waitKey(0);
+
+    img_patches = getColorsAsColoredMasks(quantized_image, image_map, black, white);
+    Mat image_darksky;
+    Mat sky_patch;
+    Mat patch_mask;
+    for (auto patch : img_patches)
+    {
+        image.copyTo(image_changed);
+        image_changed.convertTo(image_changed, CV_32FC3);
+        // convert color to mask
+        Mat patch_mask;
+        patch.copyTo(patch_mask);
+        
+        cvtColor(patch, patch, COLOR_BGR2GRAY, 1);
+        blur(patch, patch, Size(2,2));
+        GaussianBlur(patch, patch, Size(5,5),1);
+
+        //calculate percentage in top n rows
+        Scalar total_val = sum(patch_mask);
+        Scalar row_val = sum(patch_mask(Range(1,50), Range::all()));
+        percentage = row_val[0]/total_val[0];
+        
+        if (percentage > old_percentage)
+        {
+            old_percentage = percentage;
+            cout << percentage << endl;
+            patch.copyTo(sky_patch);      
+        }
+
+    }
+    imshow("patch", sky_patch);waitKey(0);
+    
+    sky_patch.convertTo(patch_mask, CV_32F, 1.0 / 255, 0);
+    patch_mask = patch_mask * 0.6;
+
+    Vec3f background_color = {0,0,0};
+    for (int i = 0; i < patch_mask.rows; i++)
+    {
+        for (int j = 0; j < patch_mask.cols; j++)
+        {
+            float b = ((1-patch_mask.at<float>(i,j)) * float(image.at<Vec3b>(i,j)[0]) + patch_mask.at<float>(i,j) * background_color[0]);
+            float g = ((1-patch_mask.at<float>(i,j)) * float(image.at<Vec3b>(i,j)[1]) + patch_mask.at<float>(i,j) * background_color[1]);
+            float r = ((1-patch_mask.at<float>(i,j)) * float(image.at<Vec3b>(i,j)[2]) + patch_mask.at<float>(i,j) * background_color[2]);
+
+            Vec3f v = {b,g,r};
+            image_changed.at<Vec3f>(i,j) = v;
+        }
+    }
+
+    image_changed.convertTo(image_darksky, CV_8UC3);
+    imshow("im changed", image_darksky);waitKey(0);
+
 
     // TODO: change to grey masks
     masks = getColorsAsColoredMasks(quantized_labels, labels_map, black, white);
-
-    //  ASSUMPTION: background is biggest label
-    map<Vec3b, int, lessVec3b> background_map;
-    background_map[background_color] = 0;
-    vector<Mat> background_mask;
-    background_mask = getColorsAsColoredMasks(quantized_labels, background_map, white, black);
-
-
-    imshow("background mask", background_mask[0]);
-    waitKey(0);
-    
-    
-    Mat decImage;
-    Mat G;
-
-    Mat lights;
-    Mat bright_image;
-    Mat bright_blue;
-    Mat frame;
-
 
     // define the colors of the lights to be added
     // orange, red, yellow
@@ -348,52 +436,28 @@ int main(int argc, char *argv[]){
     // red, yellow, blue, green
     vector<Vec3b> lights_colors = {Vec3b(0,255,0), Vec3b(255,0,0), Vec3b(0,0,255), Vec3b(0,255,255)};
 
-
     int imcount = 0;
     time_t timer;
-
-    Mat image_blue;
-    image.copyTo(image_blue);
-
-    image_blue = increaseColor(image, 1.4, 0);
-    image_blue = increaseColor(image, 3.0, 0);
-
     bool crop_lights_to_labels = true;
+
+    Mat lights, image_blueshifted, image_blueshifted_gamma_corrected, image_to_decorate;
 
     for (auto single_mask : masks)
     {
-
-        imshow("single mask", single_mask);
-
+        // blur the individual mask
         Mat single_mask_deblurred;
-        blur( single_mask, single_mask, Size(5,5) );
+        blur( single_mask, single_mask, Size(5,5));
         fastNlMeansDenoisingColored(single_mask,single_mask_deblurred, 10, 10);
-        //Canny( single_mask, single_mask_deblurred, 254, 254 ,7,0);
-        
-        imshow("single mask denoised", single_mask_deblurred);
-        image_blue = increaseColor(image, 1.4, 0);
-        intensity_transform::gammaCorrection(image_blue, bright_blue, 4);
-        
-        imshow("gammacorrection", bright_blue);
-        Mat bright_blue_bg;
-        addWeighted(bright_blue, 0.9, background_mask[0], 0.5, 0, bright_blue_bg);
-        imshow("background darkened", bright_blue_bg);
-        //imwrite("../results/image_neutral.png", image);
-        //imwrite("../results/image_dark.png", bright_blue);
-        
+        imshow("mask deblurred", single_mask_deblurred);
 
+        // do blueshift and gammacorrection
+        image_blueshifted = increaseColor(image_darksky, 1.2, 0);
+        intensity_transform::gammaCorrection(image_blueshifted, image_blueshifted_gamma_corrected, 3);
+        
         // replace edges from mask by lights with lights_colors
-        getMaskAsLights(single_mask, bright_blue, lights, lights_colors, crop_lights_to_labels);
+        getMaskAsLights(single_mask, image_blueshifted_gamma_corrected, lights, lights_colors, crop_lights_to_labels);
 
-        imshow("Decorated image", bright_blue);
-        //imwrite("../results/image_dark_decorated.png", bright_blue);
-        //imshow("dec", decImage);
-        waitKey(0);
-
-        // sharpen image
-        //GaussianBlur(decImage,frame, cv::Size(0, 0), 3);
-        //addWeighted(decImage, 1.5, frame, -0.5, 0, frame);
-        //imshow("sharpened image", frame);
+        imshow("Decorated image", image_blueshifted_gamma_corrected); waitKey(0);
 
         // save image to file with unique name
         time_t t = time(0);   // get time now
@@ -404,7 +468,7 @@ int main(int argc, char *argv[]){
         result_path.append(buffer);
         result_path.append(to_string(imcount));
         result_path.append(".png");
-        //imwrite(result_path, bright_blue);
+        //imwrite(result_path, image_to_decorate);
 
         imcount++;
     }
