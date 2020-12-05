@@ -78,6 +78,7 @@ void quantizeImageWithKmeans(const Mat& image, Mat quantized_image, int nmb_clus
  */ 
 Mat changeHSVchannel(const Mat& image, double scale, int channel)
 {  
+    imshow("pre hsv", image);
     int m = image.rows, n = image.cols;
 
     Mat out_bgr(m, n, CV_32FC3);
@@ -104,6 +105,7 @@ Mat changeHSVchannel(const Mat& image, double scale, int channel)
     cvtColor(out, out_bgr, COLOR_HSV2BGR, 3);
 
 	out_bgr.convertTo(out_bgr8, CV_8UC3);
+    imshow("post hsv", out_bgr8);
     return out_bgr8;
 }
 /** scale a single color channel of Mat image
@@ -247,9 +249,21 @@ void getMaskAsLights(const Mat3b& mask, Mat& image_decorated, Mat& lights, vecto
     Vec3b black = Vec3b(0,0,0);
 
     // extract edges from a single mask
-    Mat3b mask_boundary;
+    Mat3b mask_boundary, mask_boundary_x, mask_boundary_y;
+
     Laplacian(mask, mask_boundary, 0);
+    
+    // remove weird artifacts from masks
+    Sobel(mask_boundary, mask_boundary_y,0, 0, 1);
+    imshow("mask_boundary_y", mask_boundary_y);waitKey(0);
+    threshold(mask_boundary_y, mask_boundary_y, 100, 255, THRESH_BINARY);
+    Sobel(mask_boundary, mask_boundary_x,0, 1, 0);
+    imshow("mask_boundary_x", mask_boundary_x);waitKey(0);
+    threshold(mask_boundary_x, mask_boundary_x, 100, 255, THRESH_BINARY);
+
+    mask_boundary = mask_boundary_x + mask_boundary_y;
     threshold(mask_boundary, mask_boundary, 10, 255, THRESH_BINARY);
+
     imshow("mask_boundary", mask_boundary);waitKey(0);
 
     lights = Mat::zeros(mask_boundary.rows, mask_boundary.cols, CV_8UC3);
@@ -266,7 +280,7 @@ void getMaskAsLights(const Mat3b& mask, Mat& image_decorated, Mat& lights, vecto
             
             if (pixel_color != black)
             {   
-                if ((c % 10 == 0) ^ (r % 10 == 0))
+                if ((c % 10 == 0) || (r % 10 == 0))
                 {
                     // you don't want to many lights
                     // handles case when edge is lighted s.t. not two many lights are coming
@@ -563,11 +577,15 @@ int main(int argc, char *argv[]){
 
         // do blueshift and gammacorrection
         image_blueshifted = increaseColor(image_darksky, 1.2, 0);
+        // decrease Value
+        image_blueshifted = changeHSVchannel(image_blueshifted, 0.8, 2);
+        // increase saturation
+        image_blueshifted = changeHSVchannel(image_blueshifted, 2, 1);
         intensity_transform::gammaCorrection(image_blueshifted, image_blueshifted_gamma_corrected, 2);
         
         // replace edges from mask by lights with lights_colors
-        //getMaskAsLights(single_mask, image_blueshifted_gamma_corrected, lights, lights_colors, crop_lights_to_labels);
-        getMaskAsGirlandes(single_mask, image_blueshifted_gamma_corrected, lights, guirland_colors, false);
+        getMaskAsLights(single_mask, image_blueshifted_gamma_corrected, lights, lights_colors, crop_lights_to_labels);
+        //getMaskAsGirlandes(single_mask, image_blueshifted_gamma_corrected, lights, guirland_colors, false);
 
         imshow("Decorated image", image_blueshifted_gamma_corrected); waitKey(0);
 
