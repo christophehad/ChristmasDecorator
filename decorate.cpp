@@ -247,6 +247,7 @@ void getMaskAsGirlandes(const Mat3b& mask, Mat& image_decorated, Mat& lights, ve
  */ 
 void getMaskAsLights(const Mat3b& mask, Mat& image_decorated, Mat& lights, vector<Vec3b> lights_color, bool crop_to_mask){
     Vec3b black = Vec3b(0,0,0);
+    Vec3b white = Vec3b(255,255,255);
 
     // extract edges from a single mask
     Mat3b mask_boundary, mask_boundary_x, mask_boundary_y;
@@ -278,7 +279,7 @@ void getMaskAsLights(const Mat3b& mask, Mat& image_decorated, Mat& lights, vecto
         {
             Vec3b pixel_color = mask_boundary(r, c);
             
-            if (pixel_color != black)
+            if (pixel_color == white)
             {   
                 if ((c % 10 == 0) || (r % 10 == 0))
                 {
@@ -288,7 +289,8 @@ void getMaskAsLights(const Mat3b& mask, Mat& image_decorated, Mat& lights, vecto
                     Point location_light = Point(c + (rand()%2),r + (rand()%2));
                     // create lights
                     circle(lights, location_light, 1, current_color);
-                    color_ind++;   
+                    color_ind++;
+                    c += 9;   
                 }
             }
         }
