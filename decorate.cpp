@@ -137,10 +137,10 @@ void getMaskAsGirlandes(const Mat3b& mask, Mat& image_decorated, Mat& lights, ve
     int m = mask.rows, n = mask.cols;
 
     // Image Gradient computation in x direction
-    Sobel(mask, mask_boundary,0, 0, 1, 1);
-    double mini, maxi;
-    minMaxIdx(mask_boundary, &mini, &maxi);
-    threshold(mask_boundary, mask_boundary, 254, 255, THRESH_BINARY);
+    
+    Laplacian(mask, mask_boundary, 0);
+    threshold(mask_boundary, mask_boundary, 10, 255, THRESH_BINARY);
+    Sobel(mask_boundary, mask_boundary,0, 0, 1);
     imshow("mask_boundary", mask_boundary);waitKey(0);
 
     lights = Mat::zeros(mask_boundary.rows, mask_boundary.cols, CV_8UC3);
@@ -148,7 +148,10 @@ void getMaskAsGirlandes(const Mat3b& mask, Mat& image_decorated, Mat& lights, ve
     // hang guirlands from horizontal edges
     int color_ind = 0;
     int maximal_guirland_length = 8;
-    for (int r = 0; r < mask_boundary.rows; r++)
+
+    // do not put guirlandes on the floor
+    int limit_down = 100;
+    for (int r = 0; r < mask_boundary.rows-limit_down; r++)
     {
         for (int c = 0; c < mask_boundary.cols; c++)
         {
@@ -156,17 +159,17 @@ void getMaskAsGirlandes(const Mat3b& mask, Mat& image_decorated, Mat& lights, ve
             
             if (pixel_color != black)
             {   
-                if ((c % 10 == 0))
+                if ((c % 6 == 0))
                 {
                     // you don't want to many lights
-                    // handles case when edge is lighted s.t. not two many lights are coming
+                    // handles case when edge is lighted s.t. not too many lights are shown
                     
                     // create lights
                     Vec3b current_color = lights_color[color_ind%lights_color.size()];
-                    int guirland_length = rand( ) % maximal_guirland_length;
-                    for(int ii = 0; ii < maximal_guirland_length; ii++)
+                    int guirland_length = rand( ) % maximal_guirland_length + 4;
+                    for(int ii = 0; ii < guirland_length; ii++)
                     {
-                        Point location_light = Point(c, r + (ii * 3));
+                        Point location_light = Point(c+rand()%3-1, r + (ii * 3));
                         circle(lights, location_light, 1, current_color);
                     }
                     
@@ -190,18 +193,18 @@ void getMaskAsGirlandes(const Mat3b& mask, Mat& image_decorated, Mat& lights, ve
     Mat lights_glow, lights_glow1, lights_glow2, lights_glow3;
     blur(lights, lights, Size(3,3));
     blur(lights,lights_glow, Size(5,5));
-    blur(lights,lights_glow1, Size(6,6));
-    blur(lights,lights_glow2, Size(10,10));
+    // blur(lights,lights_glow1, Size(6,6));
+    // blur(lights,lights_glow2, Size(10,10));
     blur(lights,lights_glow3, Size(30,30));
-    lights = lights * 3;
-    lights_glow = lights_glow * 4;
-    lights_glow1 = lights_glow1 * 5;
-    lights_glow2 = lights_glow2 * 7;
-    lights_glow3 = lights_glow3 * 10;
+    lights = lights;
+    lights_glow = lights_glow*2;
+    // lights_glow1 = lights_glow1 * 5;
+    // lights_glow2 = lights_glow2 * 7;
+    lights_glow3 = lights_glow3*2;
 
     // superpose lights and glow
-    max(lights, lights_glow1, lights);
-    max(lights, lights_glow2, lights);
+    // max(lights, lights_glow1, lights);
+    // max(lights, lights_glow2, lights);
     max(lights, lights_glow3, lights);
     max(lights, lights_glow, bright_lights);
     blur(bright_lights, bright_lights, Size(1,1));
@@ -539,6 +542,8 @@ int main(int argc, char *argv[]){
     // vector<Vec3b> lights_colors = {Vec3b(0,69,255), Vec3b(0,165,255), Vec3b(51,255,255)};
     // red, yellow, blue, green
     vector<Vec3b> lights_colors = {Vec3b(0,255,0), Vec3b(255,0,0), Vec3b(0,0,255), Vec3b(0,255,255)};
+    Vec3b gold = Vec3b(0,255,240);
+    vector<Vec3b> guirland_colors = {gold};
 
     int imcount = 0;
     time_t timer;
@@ -558,11 +563,11 @@ int main(int argc, char *argv[]){
 
         // do blueshift and gammacorrection
         image_blueshifted = increaseColor(image_darksky, 1.2, 0);
-        intensity_transform::gammaCorrection(image_blueshifted, image_blueshifted_gamma_corrected, 3);
+        intensity_transform::gammaCorrection(image_blueshifted, image_blueshifted_gamma_corrected, 2);
         
         // replace edges from mask by lights with lights_colors
         //getMaskAsLights(single_mask, image_blueshifted_gamma_corrected, lights, lights_colors, crop_lights_to_labels);
-        getMaskAsGirlandes(single_mask, image_blueshifted_gamma_corrected, lights, lights_colors, crop_lights_to_labels);
+        getMaskAsGirlandes(single_mask, image_blueshifted_gamma_corrected, lights, guirland_colors, false);
 
         imshow("Decorated image", image_blueshifted_gamma_corrected); waitKey(0);
 
