@@ -266,6 +266,7 @@ void getMaskAsLights(const Mat3b& mask, Mat& image_decorated, Mat& lights, vecto
     threshold(mask_boundary, mask_boundary, 10, 255, THRESH_BINARY);
 
     imshow("mask_boundary", mask_boundary);waitKey(0);
+    imshow("image to decorate", image_decorated); waitKey(0);
 
     lights = Mat::zeros(mask_boundary.rows, mask_boundary.cols, CV_8UC3);
     // imshow("maskbondary", mask_boundary);
@@ -281,16 +282,26 @@ void getMaskAsLights(const Mat3b& mask, Mat& image_decorated, Mat& lights, vecto
             
             if (pixel_color == white)
             {   
-                if ((c % 10 == 0) || (r % 10 == 0))
+                if ((r % 10 == 0)||(c % 10 == 0))
                 {
-                    // you don't want to many lights
-                    // handles case when edge is lighted s.t. not two many lights are coming
-                    Vec3b current_color = lights_color[color_ind%lights_color.size()];
-                    Point location_light = Point(c + (rand()%2),r + (rand()%2));
-                    // create lights
-                    circle(lights, location_light, 1, current_color);
-                    color_ind++;
-                    c += 9;   
+                    bool light_in_proximity = false;
+                    for (int i = 0; i < 7; i++){
+                        for (int j = 0; j < 7; j++)
+                        {
+                            if (lights.at<Vec3b>(max(r-i,0), max(c-j,0)) != Vec3b(0,0,0))
+                            {
+                                cout << lights.at<Vec3b>(max(r-i,0), max(c-j,0)) << endl;
+                                light_in_proximity = true;
+                            }
+                        }
+                    }
+                    if (light_in_proximity == false){
+                        Vec3b current_color = lights_color[color_ind%lights_color.size()];
+                        Point location_light = Point(c + (rand()%2),r + (rand()%2));
+                        // create lights
+                        circle(lights, location_light, 1, current_color);
+                        color_ind++;
+                    }
                 }
             }
         }
@@ -446,7 +457,7 @@ int main(int argc, char *argv[]){
     Mat quantized_labels, quantized_image;
     image.copyTo(quantized_image);
     labels.copyTo(quantized_labels);
-    int nmb_of_clusters = 12;
+    int nmb_of_clusters = 4;
 
     quantizeImageWithKmeans(labels, quantized_labels, nmb_of_clusters);
     quantizeImageWithKmeans(image, quantized_image, 12);
@@ -557,9 +568,13 @@ int main(int argc, char *argv[]){
     // orange, red, yellow
     // vector<Vec3b> lights_colors = {Vec3b(0,69,255), Vec3b(0,165,255), Vec3b(51,255,255)};
     // red, yellow, blue, green
-    vector<Vec3b> lights_colors = {Vec3b(0,255,0), Vec3b(255,0,0), Vec3b(0,0,255), Vec3b(0,255,255)};
+    Vec3b red = Vec3b(0,0,255);
+    Vec3b yellow = Vec3b(0,255,255);
+    Vec3b blue = Vec3b(255,0,0);
+    Vec3b green = Vec3b(0,255,0);
+    vector<Vec3b> lights_colors = {red, white};
     Vec3b gold = Vec3b(0,255,240);
-    vector<Vec3b> guirland_colors = {gold};
+    vector<Vec3b> guirland_colors = {white};
 
     int imcount = 0;
     time_t timer;
@@ -582,7 +597,7 @@ int main(int argc, char *argv[]){
         // decrease Value
         image_blueshifted = changeHSVchannel(image_blueshifted, 0.8, 2);
         // increase saturation
-        image_blueshifted = changeHSVchannel(image_blueshifted, 2, 1);
+        //image_blueshifted = changeHSVchannel(image_blueshifted, 2, 1);
         intensity_transform::gammaCorrection(image_blueshifted, image_blueshifted_gamma_corrected, 2);
         
         // replace edges from mask by lights with lights_colors
