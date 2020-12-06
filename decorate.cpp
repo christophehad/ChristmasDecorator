@@ -143,7 +143,7 @@ void getMaskAsGirlandes(const Mat3b& mask, Mat& image_decorated, Mat& lights, ve
     Laplacian(mask, mask_boundary, 0);
     threshold(mask_boundary, mask_boundary, 10, 255, THRESH_BINARY);
     Sobel(mask_boundary, mask_boundary,0, 0, 1);
-    imshow("mask_boundary", mask_boundary);waitKey(0);
+    // imshow("mask_boundary", mask_boundary);waitKey(0);
 
     lights = Mat::zeros(mask_boundary.rows, mask_boundary.cols, CV_8UC3);
 
@@ -256,17 +256,17 @@ void getMaskAsLights(const Mat3b& mask, Mat& image_decorated, Mat& lights, vecto
     
     // remove weird artifacts from masks
     Sobel(mask_boundary, mask_boundary_y,0, 0, 1);
-    imshow("mask_boundary_y", mask_boundary_y);waitKey(0);
+    // imshow("mask_boundary_y", mask_boundary_y);waitKey(0);
     threshold(mask_boundary_y, mask_boundary_y, 100, 255, THRESH_BINARY);
     Sobel(mask_boundary, mask_boundary_x,0, 1, 0);
-    imshow("mask_boundary_x", mask_boundary_x);waitKey(0);
+    // imshow("mask_boundary_x", mask_boundary_x);waitKey(0);
     threshold(mask_boundary_x, mask_boundary_x, 100, 255, THRESH_BINARY);
 
     mask_boundary = mask_boundary_x + mask_boundary_y;
     threshold(mask_boundary, mask_boundary, 10, 255, THRESH_BINARY);
 
-    imshow("mask_boundary", mask_boundary);waitKey(0);
-    imshow("image to decorate", image_decorated); waitKey(0);
+    // imshow("mask_boundary", mask_boundary);waitKey(0);
+    // imshow("image to decorate", image_decorated); waitKey(0);
 
     lights = Mat::zeros(mask_boundary.rows, mask_boundary.cols, CV_8UC3);
     // imshow("maskbondary", mask_boundary);
@@ -346,6 +346,22 @@ void getMaskAsLights(const Mat3b& mask, Mat& image_decorated, Mat& lights, vecto
     double beta = 0.7;
     double gamma = 0;
 
+    // create yellow window mask
+
+    Mat window_mask = Mat::zeros(mask.rows, mask.cols, mask.type());
+     for (int r = 0; r < mask.rows; r++)
+    {
+        for (int c = 0; c < mask.cols; c++)
+        {
+            Vec3b pixel_color = mask(r, c);
+            if(pixel_color == white){
+                window_mask.at<Vec3b>(r,c) = Vec3b(0,255,255);
+            }
+        }
+    }
+    blur(window_mask, window_mask, Size(3,3));
+    
+    addWeighted(bright_lights, 0.9, window_mask, 0.2, 0, bright_lights);
     // smooth the mask to create smoother boundaries when lights and glow are cropped
 
     blur(grey_mask, grey_mask_smoothed, Size(10,10));
@@ -457,7 +473,7 @@ int main(int argc, char *argv[]){
     Mat quantized_labels, quantized_image;
     image.copyTo(quantized_image);
     labels.copyTo(quantized_labels);
-    int nmb_of_clusters = 4;
+    int nmb_of_clusters = 12;
 
     quantizeImageWithKmeans(labels, quantized_labels, nmb_of_clusters);
     quantizeImageWithKmeans(image, quantized_image, 12);
@@ -496,18 +512,18 @@ int main(int argc, char *argv[]){
     // smooth gradient
     blur(G, G, Size(5,5));
     G.convertTo(gradient_char, CV_8U);
-    imshow("gradient val", gradient_char);waitKey(0);
+    // imshow("gradient val", gradient_char);waitKey(0);
 
     // get mask where gradient is smaller than threshhold
     threshold(gradient_char, gradient_mask, 5, 255, THRESH_BINARY_INV);
-    imshow("gradient mask", gradient_mask); waitKey(0);
+    // imshow("gradient mask", gradient_mask); waitKey(0);
     // only consider part of image where gradient is really smooth and now find color of sky
 
     Mat image_with_small_gradient = Mat::zeros(image.rows, image.cols, CV_8UC3);
 
     quantized_image.copyTo(image_with_small_gradient, gradient_mask);
     map<Vec3b, int, lessVec3b> image_map = getLabels(image_with_small_gradient);
-    imshow("quantized image", quantized_image);waitKey(0);
+    // imshow("quantized image", quantized_image);waitKey(0);
 
     img_patches = getColorsAsColoredMasks(quantized_image, image_map, black, white);
     Mat image_darksky;
@@ -538,7 +554,7 @@ int main(int argc, char *argv[]){
         }
 
     }
-    imshow("patch", sky_patch);waitKey(0);
+    // imshow("patch", sky_patch);waitKey(0);
     
     sky_patch.convertTo(patch_mask, CV_32F, 1.0 / 255, 0);
     patch_mask = patch_mask * 0.6;
@@ -558,7 +574,7 @@ int main(int argc, char *argv[]){
     }
 
     image_changed.convertTo(image_darksky, CV_8UC3);
-    imshow("im changed", image_darksky);waitKey(0);
+    // imshow("im changed", image_darksky);waitKey(0);
 
 
     // TODO: change to grey masks
@@ -590,7 +606,7 @@ int main(int argc, char *argv[]){
         fastNlMeansDenoisingColored(single_mask,single_mask_deblurred, 10, 10);
         // get mask where gradient is smaller than threshhold
         threshold(single_mask_deblurred, single_mask_deblurred, 5, 255, THRESH_BINARY);
-        imshow("mask deblurred", single_mask_deblurred);waitKey(0);
+        // imshow("mask deblurred", single_mask_deblurred);waitKey(0);
 
         // do blueshift and gammacorrection
         image_blueshifted = increaseColor(image_darksky, 1.2, 0);
