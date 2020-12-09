@@ -245,15 +245,16 @@ void getMaskAsGirlandes(const Mat3b& mask, Mat& image_decorated, Mat& lights, ve
  *          lights_color: vector with lights color that are randomly picked
  *          crop_to_mask: indicates wheter light and there mask shoul be cropped to mask, e.g. glow and lights only inside of windows
  */ 
-void getMaskAsLights(const Mat3b& mask, Mat& image_decorated, Mat& lights, vector<Vec3b> lights_color, bool crop_to_mask){
+void getMaskAsLights(const Mat3b& mask, Mat& image_decorated, Mat& lights, vector<Vec3b> lights_color, bool crop_to_mask, bool window_glow){
     Vec3b black = Vec3b(0,0,0);
     Vec3b white = Vec3b(255,255,255);
 
     // extract edges from a single mask
     Mat3b mask_boundary, mask_boundary_x, mask_boundary_y;
+    // imwrite("../report/mask.png",mask);
 
     Laplacian(mask, mask_boundary, 0);
-    
+    // imwrite("../report/mask_laplacian.png",mask_boundary);
     // remove weird artifacts from masks
     Sobel(mask_boundary, mask_boundary_y,0, 0, 1);
     // imshow("mask_boundary_y", mask_boundary_y);waitKey(0);
@@ -264,6 +265,7 @@ void getMaskAsLights(const Mat3b& mask, Mat& image_decorated, Mat& lights, vecto
 
     mask_boundary = mask_boundary_x + mask_boundary_y;
     threshold(mask_boundary, mask_boundary, 10, 255, THRESH_BINARY);
+    // imwrite("../report/mask_boundary_thresholded.png",mask_boundary);
 
     // imshow("mask_boundary", mask_boundary);waitKey(0);
     // imshow("image to decorate", image_decorated); waitKey(0);
@@ -290,7 +292,7 @@ void getMaskAsLights(const Mat3b& mask, Mat& image_decorated, Mat& lights, vecto
                         {
                             if (lights.at<Vec3b>(max(r-i,0), max(c-j,0)) != Vec3b(0,0,0))
                             {
-                                cout << lights.at<Vec3b>(max(r-i,0), max(c-j,0)) << endl;
+                                //cout << lights.at<Vec3b>(max(r-i,0), max(c-j,0)) << endl;
                                 light_in_proximity = true;
                             }
                         }
@@ -312,6 +314,8 @@ void getMaskAsLights(const Mat3b& mask, Mat& image_decorated, Mat& lights, vecto
     Mat bright_lights;
     Mat bright_lights_cropped;
     Mat grey_mask_smoothed;
+
+    // imwrite("../report/decorated_mask.png", lights);
 
     cvtColor(mask, grey_mask, COLOR_BGR2GRAY, 1);
     cvtColor(lights, lights_mask, COLOR_BGR2GRAY, 1);
@@ -336,6 +340,7 @@ void getMaskAsLights(const Mat3b& mask, Mat& image_decorated, Mat& lights, vecto
     max(lights, lights_glow3, lights);
     max(lights, lights_glow, bright_lights);
     blur(bright_lights, bright_lights, Size(1,1));
+    // imwrite("../report/decorated_mask_glow.png", bright_lights);
     // imshow("bright_lights", bright_lights);
     // waitKey(0);
 
@@ -360,8 +365,12 @@ void getMaskAsLights(const Mat3b& mask, Mat& image_decorated, Mat& lights, vecto
         }
     }
     blur(window_mask, window_mask, Size(3,3));
+    // imwrite("../report/windows_glow.png", window_mask);
     
-    addWeighted(bright_lights, 0.9, window_mask, 0.2, 0, bright_lights);
+    if (window_glow)
+    {
+        addWeighted(bright_lights, 0.9, window_mask, 0.2, 0, bright_lights);
+    }
     // smooth the mask to create smoother boundaries when lights and glow are cropped
 
     blur(grey_mask, grey_mask_smoothed, Size(10,10));
@@ -378,6 +387,7 @@ void getMaskAsLights(const Mat3b& mask, Mat& image_decorated, Mat& lights, vecto
         addWeighted(image_decorated, alpha, bright_lights, beta, gamma, image_decorated);
         bright_lights.copyTo(lights);
     }
+    // imwrite("../report/decorated_image.png", image_decorated);
 }
 
 /**
@@ -478,7 +488,6 @@ int main(int argc, char *argv[]){
     quantizeImageWithKmeans(labels, quantized_labels, nmb_of_clusters);
     quantizeImageWithKmeans(image, quantized_image, 12);
 
-    
     // int area = image.rows * image.cols;
     // for (auto color : image_map)
     // {
@@ -510,20 +519,23 @@ int main(int argc, char *argv[]){
     Mat gradient_char, gradient_mask;
 
     // smooth gradient
+    G.convertTo(gradient_char, CV_8U);
+    // imwrite("../report/gradient.png", gradient_char);
     blur(G, G, Size(5,5));
     G.convertTo(gradient_char, CV_8U);
-    // imshow("gradient val", gradient_char);waitKey(0);
+    // imwrite("../report/gradient_smoothed.png", gradient_char);
 
     // get mask where gradient is smaller than threshhold
     threshold(gradient_char, gradient_mask, 5, 255, THRESH_BINARY_INV);
-    // imshow("gradient mask", gradient_mask); waitKey(0);
+    // imwrite("../report/gradient_mask.png", gradient_mask);
     // only consider part of image where gradient is really smooth and now find color of sky
 
     Mat image_with_small_gradient = Mat::zeros(image.rows, image.cols, CV_8UC3);
 
     quantized_image.copyTo(image_with_small_gradient, gradient_mask);
     map<Vec3b, int, lessVec3b> image_map = getLabels(image_with_small_gradient);
-    // imshow("quantized image", quantized_image);waitKey(0);
+    // imwrite("../report/quantized_image.png", quantized_image);
+    // imwrite("../report/quantized_image_with_small_gradient.png", image_with_small_gradient);
 
     img_patches = getColorsAsColoredMasks(quantized_image, image_map, black, white);
     Mat image_darksky;
@@ -554,7 +566,7 @@ int main(int argc, char *argv[]){
         }
 
     }
-    // imshow("patch", sky_patch);waitKey(0);
+    // imwrite("../report/sky_patch.png", sky_patch);
     
     sky_patch.convertTo(patch_mask, CV_32F, 1.0 / 255, 0);
     patch_mask = patch_mask * 0.6;
@@ -574,7 +586,7 @@ int main(int argc, char *argv[]){
     }
 
     image_changed.convertTo(image_darksky, CV_8UC3);
-    // imshow("im changed", image_darksky);waitKey(0);
+    // imwrite("../report/image_darksky.png", image_darksky);
 
 
     // TODO: change to grey masks
@@ -595,6 +607,7 @@ int main(int argc, char *argv[]){
     int imcount = 0;
     time_t timer;
     bool crop_lights_to_labels = true;
+    bool window_glow = false;
 
     Mat lights, image_blueshifted, image_blueshifted_gamma_corrected, image_to_decorate;
 
@@ -602,22 +615,31 @@ int main(int argc, char *argv[]){
     {
         // blur the individual mask
         Mat single_mask_deblurred;
+        // imwrite("../report/single_mask.png",single_mask);
         blur( single_mask, single_mask, Size(5,5));
         fastNlMeansDenoisingColored(single_mask,single_mask_deblurred, 10, 10);
+        // imwrite("../report/single_mask_deblurred.png",single_mask_deblurred);
+        
         // get mask where gradient is smaller than threshhold
         threshold(single_mask_deblurred, single_mask_deblurred, 5, 255, THRESH_BINARY);
         // imshow("mask deblurred", single_mask_deblurred);waitKey(0);
 
         // do blueshift and gammacorrection
         image_blueshifted = increaseColor(image_darksky, 1.2, 0);
+        // imwrite("../report/image_blueshift.png",image_blueshifted);
         // decrease Value
         image_blueshifted = changeHSVchannel(image_blueshifted, 0.8, 2);
-        // increase saturation
-        //image_blueshifted = changeHSVchannel(image_blueshifted, 2, 1);
+        // imwrite("../report/image_brightness_decreased.png",image_blueshifted);
+
+        // decrease saturation
+        image_blueshifted = changeHSVchannel(image_blueshifted, 0.8, 1);
+        // imwrite("../report/image_saturation_decreased.png",image_blueshifted);
+
         intensity_transform::gammaCorrection(image_blueshifted, image_blueshifted_gamma_corrected, 2);
+        // imwrite("../report/image_gamma_corrected.png",image_blueshifted_gamma_corrected);
         
         // replace edges from mask by lights with lights_colors
-        getMaskAsLights(single_mask, image_blueshifted_gamma_corrected, lights, lights_colors, crop_lights_to_labels);
+        getMaskAsLights(single_mask, image_blueshifted_gamma_corrected, lights, lights_colors, crop_lights_to_labels, window_glow);
         //getMaskAsGirlandes(single_mask, image_blueshifted_gamma_corrected, lights, guirland_colors, false);
 
         imshow("Decorated image", image_blueshifted_gamma_corrected); waitKey(0);
