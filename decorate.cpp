@@ -34,7 +34,7 @@ void calculateGradientOfImage(const Mat& image, Mat Ix, Mat Iy, Mat G)
 /** Quantize image with kmeans
  * adapted from https://stackoverflow.com/questions/9575652/opencv-using-k-means-to-posterize-an-image
  * and https://stackoverflow.com/questions/49710006/fast-color-quantization-in-opencv
- * 
+ *
  */
 void quantizeImageWithKmeans(const Mat& image, Mat quantized_image, int nmb_clusters)
 {
@@ -50,8 +50,8 @@ void quantizeImageWithKmeans(const Mat& image, Mat quantized_image, int nmb_clus
     double eps = 0.001;
     colVec.convertTo(colVecD, CV_32FC3); // convert to floating point
 
-    double compactness = kmeans(colVecD, nmb_clusters, bestLabels, 
-            TermCriteria( TermCriteria::EPS+TermCriteria::COUNT, attempts, eps), 
+    double compactness = kmeans(colVecD, nmb_clusters, bestLabels,
+            TermCriteria( TermCriteria::EPS+TermCriteria::COUNT, attempts, eps),
             attempts, KMEANS_PP_CENTERS, centers);
 
     Mat labelsImg = bestLabels.reshape(1, origRows); // single channel image of labels
@@ -75,9 +75,9 @@ void quantizeImageWithKmeans(const Mat& image, Mat quantized_image, int nmb_clus
 
 /** convert Mat image to HSV and scale V of every pixel by scale
  *  causes change of brightness of image
- */ 
+ */
 Mat changeHSVchannel(const Mat& image, double scale, int channel)
-{  
+{
     imshow("pre hsv", image);
     int m = image.rows, n = image.cols;
 
@@ -101,7 +101,7 @@ Mat changeHSVchannel(const Mat& image, double scale, int channel)
 			out.at<Vec3f>(i,j) = c;
 		}
 	}
-    
+
     cvtColor(out, out_bgr, COLOR_HSV2BGR, 3);
 
 	out_bgr.convertTo(out_bgr8, CV_8UC3);
@@ -115,7 +115,7 @@ Mat changeHSVchannel(const Mat& image, double scale, int channel)
  *          channel determines which channel of RGB image is scaled
  */
 Mat increaseColor(const Mat& image, double scale, int channel)
-{  
+{
     Mat new_image;
     image.copyTo(new_image);
 
@@ -139,7 +139,7 @@ void getMaskAsGirlandes(const Mat3b& mask, Mat& image_decorated, Mat& lights, ve
     int m = mask.rows, n = mask.cols;
 
     // Image Gradient computation in x direction
-    
+
     Laplacian(mask, mask_boundary, 0);
     threshold(mask_boundary, mask_boundary, 10, 255, THRESH_BINARY);
     Sobel(mask_boundary, mask_boundary,0, 0, 1);
@@ -158,14 +158,14 @@ void getMaskAsGirlandes(const Mat3b& mask, Mat& image_decorated, Mat& lights, ve
         for (int c = 0; c < mask_boundary.cols; c++)
         {
             Vec3b pixel_color = mask_boundary(r, c);
-            
+
             if (pixel_color != black)
-            {   
+            {
                 if ((c % 6 == 0))
                 {
                     // you don't want to many lights
                     // handles case when edge is lighted s.t. not too many lights are shown
-                    
+
                     // create lights
                     Vec3b current_color = lights_color[color_ind%lights_color.size()];
                     int guirland_length = rand( ) % maximal_guirland_length + 4;
@@ -174,8 +174,8 @@ void getMaskAsGirlandes(const Mat3b& mask, Mat& image_decorated, Mat& lights, ve
                         Point location_light = Point(c+rand()%3-1, r + (ii * 3));
                         circle(lights, location_light, 1, current_color);
                     }
-                    
-                    color_ind++;   
+
+                    color_ind++;
                 }
             }
         }
@@ -244,7 +244,7 @@ void getMaskAsGirlandes(const Mat3b& mask, Mat& image_decorated, Mat& lights, ve
  *          lights: returns the lights only if they are needed separately
  *          lights_color: vector with lights color that are randomly picked
  *          crop_to_mask: indicates wheter light and there mask shoul be cropped to mask, e.g. glow and lights only inside of windows
- */ 
+ */
 void getMaskAsLights(const Mat3b& mask, Mat& image_decorated, Mat& lights, vector<Vec3b> lights_color, bool crop_to_mask, bool window_glow){
     Vec3b black = Vec3b(0,0,0);
     Vec3b white = Vec3b(255,255,255);
@@ -281,9 +281,9 @@ void getMaskAsLights(const Mat3b& mask, Mat& image_decorated, Mat& lights, vecto
         for (int c = 0; c < mask_boundary.cols; c++)
         {
             Vec3b pixel_color = mask_boundary(r, c);
-            
+
             if (pixel_color == white)
-            {   
+            {
                 if ((r % 10 == 0)||(c % 10 == 0))
                 {
                     bool light_in_proximity = false;
@@ -366,7 +366,7 @@ void getMaskAsLights(const Mat3b& mask, Mat& image_decorated, Mat& lights, vecto
     }
     blur(window_mask, window_mask, Size(3,3));
     // imwrite("../report/windows_glow.png", window_mask);
-    
+
     if (window_glow)
     {
         addWeighted(bright_lights, 0.9, window_mask, 0.2, 0, bright_lights);
@@ -418,7 +418,7 @@ map<Vec3b, int, lessVec3b> getLabels(const Mat3b& src)
 
 
 /** Get a color as a mask with label_color and background_color
- * 
+ *
  */
 vector<Mat> getColorsAsColoredMasks(Mat labels, map<Vec3b, int, lessVec3b> label_map, Vec3b background_color, Vec3b label_color)
 {
@@ -437,11 +437,11 @@ vector<Mat> getColorsAsColoredMasks(Mat labels, map<Vec3b, int, lessVec3b> label
                 else
                 {
                     masks.back().at<Vec3b>(i,j) = background_color;
-                }  
+                }
             }
         }
     }
-    
+
     return masks;
 }
 
@@ -494,7 +494,7 @@ int main(int argc, char *argv[]){
     //     cout << "Color: " << color.first << " \t - Area: " << 100.f * float(color.second) / float(area) << "%" << endl;
     // }
 
-    
+
     // Get palette
     // taken from: https://stackoverflow.com/questions/35479344/how-to-get-a-color-palette-from-an-image-using-opencv
     map<Vec3b, int, lessVec3b> labels_map = getLabels(quantized_labels);
@@ -507,7 +507,7 @@ int main(int argc, char *argv[]){
     vector<Mat> img_patches;
     vector<Mat> masks;
     Mat image_changed;
-    
+
     float old_percentage = 0.0;
     float percentage;
 
@@ -548,7 +548,7 @@ int main(int argc, char *argv[]){
         // convert color to mask
         Mat patch_mask;
         patch.copyTo(patch_mask);
-        
+
         cvtColor(patch, patch, COLOR_BGR2GRAY, 1);
         blur(patch, patch, Size(2,2));
         GaussianBlur(patch, patch, Size(5,5),1);
@@ -557,17 +557,17 @@ int main(int argc, char *argv[]){
         Scalar total_val = sum(patch_mask);
         Scalar row_val = sum(patch_mask(Range(1,50), Range::all()));
         percentage = row_val[0]/total_val[0];
-        
+
         if (percentage > old_percentage)
         {
             old_percentage = percentage;
             cout << percentage << endl;
-            patch.copyTo(sky_patch);      
+            patch.copyTo(sky_patch);
         }
 
     }
     // imwrite("../report/sky_patch.png", sky_patch);
-    
+
     sky_patch.convertTo(patch_mask, CV_32F, 1.0 / 255, 0);
     patch_mask = patch_mask * 0.6;
 
@@ -610,16 +610,21 @@ int main(int argc, char *argv[]){
     bool window_glow = false;
 
     Mat lights, image_blueshifted, image_blueshifted_gamma_corrected, image_to_decorate;
+    Mat windows_labels;
 
     for (auto single_mask : masks)
     {
+        if (imcount == WINDOWS_IDX) {
+            // do stuff for windows mask
+        }
+
         // blur the individual mask
         Mat single_mask_deblurred;
         // imwrite("../report/single_mask.png",single_mask);
         blur( single_mask, single_mask, Size(5,5));
         fastNlMeansDenoisingColored(single_mask,single_mask_deblurred, 10, 10);
         // imwrite("../report/single_mask_deblurred.png",single_mask_deblurred);
-        
+
         // get mask where gradient is smaller than threshhold
         threshold(single_mask_deblurred, single_mask_deblurred, 5, 255, THRESH_BINARY);
         // imshow("mask deblurred", single_mask_deblurred);waitKey(0);
@@ -637,7 +642,7 @@ int main(int argc, char *argv[]){
 
         intensity_transform::gammaCorrection(image_blueshifted, image_blueshifted_gamma_corrected, 2);
         // imwrite("../report/image_gamma_corrected.png",image_blueshifted_gamma_corrected);
-        
+
         // replace edges from mask by lights with lights_colors
         getMaskAsLights(single_mask, image_blueshifted_gamma_corrected, lights, lights_colors, crop_lights_to_labels, window_glow);
         //getMaskAsGirlandes(single_mask, image_blueshifted_gamma_corrected, lights, guirland_colors, false);
@@ -658,7 +663,14 @@ int main(int argc, char *argv[]){
         imcount++;
     }
 
-    
+    // decorate the windows :)
+    Mat decorated_image;
+
+    decorateWindows(decorated_image, labels, image_blueshifted_gamma_corrected);
+
+    imshow("Decorated Image", decorated_image);
+    imwrite(CD::srcDir + "/out/decorated-image.jpg", decorated_image);
+    waitKey();
 
     return 0;
 }

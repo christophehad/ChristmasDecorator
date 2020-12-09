@@ -1,8 +1,13 @@
 #include <vector>
 #include <opencv2/imgproc/imgproc.hpp>
+#include "ChristmasDecorator.h"
+#include "windows.h"
+#include "align.h"
 
 using namespace cv;
 using namespace std;
+
+const int WINDOWS_IDX = 9;
 
 struct lessVec3b
 {

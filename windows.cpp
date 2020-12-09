@@ -42,6 +42,21 @@ void insertMistleToe(const Mat& input, Mat& output, const Mat& mistletoe, const 
 	outputRegion.copyTo(output(Rect(newCorner.x, newCorner.y, newDim, newDim)));
 }
 
+void decorateWindows(const Mat& input, const Mat& labels, Mat& output) {
+	vector <RectRegion> windows = getRegions(labels, CD::windowColor);
+
+	//vector <RectRegion> windows = getRegions(labels, Vec3b(0,255,0)); // trying to decorate from masks
+	
+	Mat mistletoe = imread(mistletoePath);
+	Mat mistletoeAlpha = imread(mistletoeAlphaPath);
+
+	output = input;
+
+	for (auto& region : windows) {
+		insertMistleToe(output, output, mistletoe, mistletoeAlpha, region.corner, region.height, region.width);
+	}
+}
+
 void onMouse1(int event, int x, int y, int foo, void* p)
 {
 	if (event == EVENT_LBUTTONDOWN) {
@@ -77,14 +92,12 @@ void onMouse1(int event, int x, int y, int foo, void* p)
 
 }
 
-
-int main(int argc, char** argv)
+int debugWindows(int argc, char** argv)
 {
 	Data D;
-	string srcDir = "../../..";
-	D.I1 = imread(srcDir + "/data/mistletoe.jpg");
-	D.M1 = imread(srcDir + "/data/mistletoe-alpha.jpg");
-	D.W1 = imread(srcDir + "/data/windows.jpg");
+	D.I1 = imread(CD::srcDir + "/data/mistletoe.jpg");
+	D.M1 = imread(CD::srcDir + "/data/mistletoe-alpha.jpg");
+	D.W1 = imread(CD::srcDir + "/data/windows.jpg");
 
 	imshow("Window", D.W1);
 	//imshow("Mistletoe", D.I1);
