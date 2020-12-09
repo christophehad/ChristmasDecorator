@@ -30,3 +30,10 @@
 *.exe
 *.out
 *.app
+
+.vs
+out/build/x64-Debug (default)
+*.json
+
+.vscode
+build
