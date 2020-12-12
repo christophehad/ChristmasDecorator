@@ -371,8 +371,7 @@ int main(int argc, char *argv[]){
     int nmb_of_clusters = 12;
 
     quantizeImageWithKmeans(labels, quantized_labels, nmb_of_clusters);
-    Mat image_darksky;
-    image_darksky = darkenSkyOfImage(image);
+    Mat image_darksky = darkenSkyOfImage(image);
     Mat image_night = dayToNightTransfer(image_darksky);
 
     // int area = image.rows * image.cols;
@@ -391,8 +390,6 @@ int main(int argc, char *argv[]){
     Vec3b white = Vec3b(255,255,255);
     vector<Mat> masks;
 
-
-    // TODO: change to grey masks
     masks = getColorsAsColoredMasks(quantized_labels, labels_map, black, white);
 
     // define the colors of the lights to be added
@@ -455,11 +452,11 @@ int main(int argc, char *argv[]){
     // decorate the windows :)
     Mat decorated_image;
 
-    decorateWindows(decorated_image, labels, image_blueshifted_gamma_corrected);
+    decorateWindows(image_night, labels, decorated_image);
 
     imshow("Decorated Image", decorated_image);
     imwrite(CD::srcDir + "/out/decorated-image.jpg", decorated_image);
-    waitKey();
+    waitKey(0);
 
     return 0;
 }
