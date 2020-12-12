@@ -13,7 +13,7 @@
 #include "daytonight.h"
 
 
-void getMaskAsGirlandes(const Mat3b& mask, Mat& image_decorated, Mat& lights, vector<Vec3b> lights_color, bool crop_to_mask){
+Mat getMaskAsGuirlandes(const Mat3b& mask, const Mat& image, Mat& lights, vector<Vec3b> lights_color, bool crop_to_mask){
     Vec3b black = Vec3b(0,0,0);
 
     // extract edges from a single mask
@@ -96,6 +96,8 @@ void getMaskAsGirlandes(const Mat3b& mask, Mat& image_decorated, Mat& lights, ve
     // waitKey(0);
 
     // copy the lights separately to image to make them more bright
+    Mat image_decorated;
+    image.copyTo(image_decorated);
     lights.copyTo(image_decorated, lights_mask);
 
     double alpha = 0.8;
@@ -118,6 +120,7 @@ void getMaskAsGirlandes(const Mat3b& mask, Mat& image_decorated, Mat& lights, ve
         addWeighted(image_decorated, alpha, bright_lights, beta, gamma, image_decorated);
         bright_lights.copyTo(lights);
     }
+    return image_decorated;
 }
 
 /** Decorates image with lights according to boundaries given in mask
@@ -431,7 +434,7 @@ int main(int argc, char *argv[]){
         // replace edges from mask by lights with lights_colors
         Mat image_decorated;
         image_decorated = getMaskAsLights(single_mask, image_night, lights, lights_colors, crop_lights_to_labels, window_glow);
-        //getMaskAsGirlandes(single_mask, image_blueshifted_gamma_corrected, lights, guirland_colors, false);
+        //image_decorated = getMaskAsGuirlandes(single_mask, image_night, lights, guirland_colors, false);
 
         imshow("Decorated image", image_decorated); waitKey(0);
 

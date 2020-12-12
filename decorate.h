@@ -16,7 +16,7 @@ struct lessVec3b
     }
 };
 
-void getMaskAsGirlandes(const Mat3b& mask, Mat& image_decorated, Mat& lights, vector<Vec3b> lights_color, bool crop_to_mask);
+Mat getMaskAsGuirlandes(const Mat3b& mask, const Mat& image, Mat& lights, vector<Vec3b> lights_color, bool crop_to_mask);
 
 Mat getMaskAsLights(const Mat3b& mask, const Mat& image, Mat& lights, vector<Vec3b> lights_color, bool crop_to_mask, bool window_glow);
 
