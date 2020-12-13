@@ -1,0 +1,20 @@
+#!/bin/bash
+
+echo "Generating decorations for all facades from GAN"
+
+pwd
+cd build
+
+for N in {1..40}
+do
+
+    path=$"../data/facades_resized/"
+
+    real=$"_real.png"
+    fake=$"_fake.png"
+
+    realname="$path$N$real"
+    fakename="$path$N$fake"
+    echo "$realname"
+    ./decorate "$realname" "$fakename"
+done

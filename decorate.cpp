@@ -169,7 +169,7 @@ int main(int argc, char *argv[]){
         image_decorated = getMaskAsLights(single_mask, image_night, lights, lights_colors, crop_lights_to_labels, window_glow);
         //image_decorated = getMaskAsGuirlandes(single_mask, image_night, lights, guirland_colors, false);
 
-        imshow("Decorated image", image_decorated); waitKey(0);
+        // imshow("Decorated image", image_decorated); // waitKey(0);
 
         // save image to file with unique name
         time_t t = time(0);   // get time now
@@ -180,7 +180,7 @@ int main(int argc, char *argv[]){
         result_path.append(buffer);
         result_path.append(to_string(imcount));
         result_path.append(".png");
-        //imwrite(result_path, image_to_decorate);
+        imwrite(result_path, image_decorated);
 
         imcount++;
     }
@@ -190,9 +190,9 @@ int main(int argc, char *argv[]){
 
     decorateWindows(image_night, labels, decorated_image);
 
-    imshow("Decorated Image", decorated_image);
+    // imshow("Decorated Image", decorated_image);
     imwrite(CD::srcDir + "/out/decorated-image.jpg", decorated_image);
-    waitKey(0);
+    // waitKey(0);
 
     return 0;
 }
