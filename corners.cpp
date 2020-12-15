@@ -342,7 +342,7 @@ void findRectRegions(vector <Point> pByY, vector <RectRegion>& toFill, const Mat
 	// the vectors pBy.. are the points sorted by ..
 	Mat tmp = I;
 
-	filterPoints(pByY, 0.5 * minCorner); cout << "Threshold:" << 0.1 * minCorner << " Min corner:" << minCorner << endl;
+	filterPoints(pByY, 0.5 * minCorner); cout << "Threshold:" << 0.5 * minCorner << " Min corner:" << minCorner << endl;
 	sort(pByY.begin(), pByY.end(), isLessByY);
 	//cout << "Filtered of length: " << pByY.size() << " \n" << pByY << endl;
 	for (auto u : pByY) { circle(I, u, 8, { 0,0,255 }); } imshow("Filtered corners", tmp);
