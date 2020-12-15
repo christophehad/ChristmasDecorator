@@ -73,6 +73,8 @@ static void usage(char *s, int ntests){
 }
 
 int main(int argc, char *argv[]){
+    // For aligning facades using the interactive selector, to comment/uncomment
+    //mainAlign(); waitKey(); return 0;
     if(argc < 2){
         std::cerr << "Usage: " << argv[0] << " <IMAGEPATH> " << " <LABELPATH> " << std::endl;
         return 1;
@@ -148,6 +150,7 @@ int main(int argc, char *argv[]){
 
     Mat lights, image_blueshifted, image_blueshifted_gamma_corrected, image_to_decorate;
     Mat windows_labels;
+    Mat image_decorated;
 
     for (auto single_mask : masks)
     {
@@ -166,7 +169,7 @@ int main(int argc, char *argv[]){
         // imshow("mask deblurred", single_mask_deblurred);waitKey(0);
 
         // replace edges from mask by lights with lights_colors
-        Mat image_decorated;
+        image_decorated.release();
         image_decorated = getMaskAsLights(single_mask, image_night, lights, lights_colors, crop_lights_to_labels, window_glow);
         //image_decorated = getMaskAsGuirlandes(single_mask, image_night, lights, guirland_colors, false);
 
@@ -187,7 +190,7 @@ int main(int argc, char *argv[]){
     }
 
     // decorate the windows :)
-    Mat decorated_image = image_night;
+    Mat decorated_image = image_decorated;
 
 
     // imshow("Decorated Image", decorated_image);

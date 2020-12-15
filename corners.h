@@ -17,7 +17,7 @@ struct RectRegion {
 };
 
 // 1 % seems the best
-const double cornersMarginThresh = 0.03;
+const double cornersMarginThresh = 0.01;
 
 // sometimes a small one (150) detects many duplicate corners in small images
 const int HARRIS_THRESH = 150;
@@ -25,8 +25,11 @@ const int HARRIS_THRESH = 150;
 // allow for rect regions to intersect
 const bool WITH_INTERS = false;
 
-// minimum dimension of window in % of width/height of image
-const double minDimRatio = 0.05;
+// minimum dimension of window in % of width/height of image; best [0.01 - 0.05]
+const double minDimRatio = 0.03;
+
+// increase region widths/heights by regionScale %
+const double regionScale = 1;
 
 // important for debugging
 string type2str(int type);
