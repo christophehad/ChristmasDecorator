@@ -410,15 +410,32 @@ void findRectRegions(vector <Point> pByY, vector <RectRegion>& toFill, const Mat
 	}
 }
 
+void scaleRegions(vector <RectRegion>& ret, double scale, const Mat& I) {
+	if (scale == 0) { return; }
+	int rows = I.rows, cols = I.cols;
+	for (auto& region : ret) {
+		Point prevCorner = region.corner;
+		int prevWidth = region.width, prevHeight = region.height;
+		int addedW = scale * prevWidth, addedH = scale * prevHeight;
+		int newX = prevCorner.x - addedW / 2; newX = newX < 0 ? 0 : newX;
+		int newY = prevCorner.y - addedH / 2; newY = newY < 0 ? 0 : newY;
+		int newW = newX + prevWidth + addedW > I.cols ? I.cols - newX : prevWidth + addedW;
+		int newH = newY + prevHeight + addedH > I.rows ? I.rows - newY : prevHeight + addedH;
+		region.corner = Point(newX, newY);
+		region.height = newH;
+		region.width = newW;
+	}
+}
+
 vector<RectRegion> getRegions(const Mat& I, Vec3b colorLower, Vec3b colorUpper) {
-	Mat selectedRegion = selectColor(I, colorLower,colorUpper);
+	Mat selectedRegion = selectColor(I, colorLower, colorUpper); imshow("Selected Region", selectedRegion);
 
 	// Harris requires the input to be in grayscale
 	Mat forHarris; cvtColor(selectedRegion, forHarris, COLOR_RGB2GRAY);
 	vector <Point> corners = harris(forHarris);
 	vector <RectRegion> ret;
 	findRectRegions(corners, ret, I);
-
+	scaleRegions(ret, regionScale,I);
 	return ret;
 }
 
