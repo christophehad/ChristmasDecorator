@@ -1,5 +1,7 @@
 #include "align.h"
 
+int WARP_OFFSET = 100;
+
 Mat transformWithTemplate(const Mat& input, const Mat& temp) {
 	Mat input_gray, template_gray;
 	cvtColor(input, input_gray, COLOR_RGB2GRAY);
@@ -116,6 +118,7 @@ void perspOnMouse(int event, int x, int y, int foo, void* p)
 void interactivePerspTransform(const Mat& input, string inPath, string outPath, DataAlign & D) {
 	vector<Point2f> selection;
 	D.selection = selection; D.inPath = inPath; D.outPath = outPath;
+	WARP_OFFSET = WARP_OFFSET_RATIO * D.I.rows;
 	input.copyTo(D.I); input.copyTo(D.tmp);
 	imshow("Interactive input", input);
 	//resizeWindow("Interactive input", 2 * input.rows, 2 * input.cols);
@@ -148,7 +151,7 @@ int mainAlign() {
 	string inputPath2 = "/data/cmp_b0001"; //vertical tall bldg
 	string inputPath3 = "/data/facade_to_align_template"; //flipped image using iPhone editing
 	string inputPath = inputPath3;
-	string toAlignPath = "/data/facade_to_align";
+	string toAlignPath = "/data/facade_to_align_2"; // main image to align, ignore the above
 
 	string outputPath = CD::srcDir + toAlignPath + "_aligned" + ".jpg";
 	
@@ -163,8 +166,8 @@ int mainAlign() {
 
 	DataAlign D;
 	interactivePerspTransform(inputToAlign,CD::srcDir + inputPath,outputPath,D);
-	restorePerspective(D.out, D.inPath + ".xml");
-	waitKey();
+	//restorePerspective(D.out, D.inPath + ".xml");
+	//waitKey();
 
 	return 0;
 }

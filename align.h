@@ -9,7 +9,7 @@
 using namespace cv;
 using namespace std;
 
-const int WARP_OFFSET = 100;
+const bool WARP_OFFSET_RATIO = 0.1;
 
 struct DataAlign {
 	Mat I, tmp, out;
@@ -18,6 +18,7 @@ struct DataAlign {
 };
 
 // main interactive function for selecting the input region to be warped
+// inPath should be without extension, outPath should
 void interactivePerspTransform(const Mat& input, string inPath, string outPath, DataAlign & D);
 
 // function to restore the initial perspective from the saved warp matrix in .xml file
