@@ -250,7 +250,7 @@ vector<Point> harris(const Mat& Ic) {
 			}
 		}
 	}
-	imshow("Harris Corners", dst_norm_scaled);
+	//imshow("Harris Corners", dst_norm_scaled);
 	return corners;
 }
 
@@ -266,8 +266,8 @@ Mat selectColor(const Mat& Ic, Vec3b colorLower, Vec3b colorUpper) {
 	//cout << type2str(goodMask.type()) << endl << type2str(Ic.type()) << endl;
 	multiply(Ic, goodMask, out);
 
-	imshow("Mask", goodMask);
-	imshow("Modified I", Ic);
+	//imshow("Mask", goodMask);
+	//imshow("Modified I", Ic);
 	return out;
 }
 
@@ -339,8 +339,6 @@ void filterPoints(vector <Point>& v, int threshold) {
 	}
 }
 
-// TODO : account for small variations in corners search (and update the startX accordingly)
-// MAYBE? can always check if there's another candidate for handling errors?
 void findRectRegions(vector <Point> pByY, vector <RectRegion>& toFill, const Mat & I) {
 	int minDim = I.cols < I.rows ? I.cols : I.rows;
 	int minCorner = minDimRatio * minDim;
@@ -351,7 +349,7 @@ void findRectRegions(vector <Point> pByY, vector <RectRegion>& toFill, const Mat
 
 	filterPoints(pByY, 0.5 * minCorner); cout << "Threshold:" << 0.1 * minCorner << " Min corner:" << minCorner << endl;
 	sort(pByY.begin(), pByY.end(), isLessByY);
-	cout << "Filtered of length: " << pByY.size() << " \n" << pByY << endl;
+	//cout << "Filtered of length: " << pByY.size() << " \n" << pByY << endl;
 	for (auto u : pByY) { circle(I, u, 8, { 0,0,255 }); } imshow("Filtered corners", tmp);
 	vector <Point> pByX(pByY);
 	int n = pByY.size();
