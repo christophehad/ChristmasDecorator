@@ -73,7 +73,7 @@ static void usage(char *s, int ntests){
 }
 
 int main(int argc, char *argv[]){
-    // For aligning facades using the interactive selector
+    // For aligning facades using the interactive selector, to comment/uncomment
     //mainAlign(); waitKey(); return 0;
     if(argc < 2){
         std::cerr << "Usage: " << argv[0] << " <IMAGEPATH> " << " <LABELPATH> " << std::endl;

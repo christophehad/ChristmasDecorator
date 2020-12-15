@@ -127,7 +127,7 @@ void interactivePerspTransform(const Mat& input, string inPath, string outPath, 
 	waitKey();
 }
 
-Mat restorePerspective(const Mat & input, string xmlPath) {
+Mat restorePerspective(const Mat & input, string xmlPath, bool ownDim) {
 	Mat restoredImage;
 	FileStorage file(xmlPath, FileStorage::READ);
 	if (!file.isOpened())
@@ -136,7 +136,11 @@ Mat restorePerspective(const Mat & input, string xmlPath) {
 	}
 	else {
 		Mat warp;  file["warp"] >> warp;
-		Size origSize; file["dim"] >> origSize;
+		Size origSize;
+		if (ownDim)
+			origSize = input.size();
+		else
+			file["dim"] >> origSize;
 
 		restoredImage = Mat::zeros(origSize, input.type());
 		warpPerspective(input, restoredImage, warp, origSize, INTER_LINEAR + WARP_INVERSE_MAP, BORDER_TRANSPARENT);
@@ -151,9 +155,15 @@ int mainAlign() {
 	string inputPath2 = "/data/cmp_b0001"; //vertical tall bldg
 	string inputPath3 = "/data/facade_to_align_template"; //flipped image using iPhone editing
 	string inputPath = inputPath3;
-	string toAlignPath = "/data/facade_to_align_2"; // main image to align, ignore the above
+	string toAlignPath = "/data/facade_to_align_3"; // main image to align, ignore the above
 
 	string outputPath = CD::srcDir + toAlignPath + "_aligned" + ".jpg";
+
+	// for Restoring
+	string toRestorePath = CD::srcDir + "/out/decorated-image.jpg";
+	string restoredPath = CD::srcDir + "/out/decorated-image-orig_alignment.jpg";
+	string prevXMLPath = CD::srcDir + toAlignPath + ".xml";
+	bool ownDim = true;
 	
 	Mat inputTemplate = imread(CD::srcDir + inputPath + ".jpg");
 	Mat inputToAlign = imread(CD::srcDir + toAlignPath + ".jpg");
@@ -165,8 +175,11 @@ int mainAlign() {
 	//imshow("Aligned image", alignedImg);
 
 	DataAlign D;
-	interactivePerspTransform(inputToAlign,CD::srcDir + inputPath,outputPath,D);
-	//restorePerspective(D.out, D.inPath + ".xml");
+	//interactivePerspTransform(inputToAlign,CD::srcDir + toAlignPath,outputPath,D);
+
+	Mat toRestore = imread(toRestorePath);
+	Mat restored_image = restorePerspective(toRestore, prevXMLPath,ownDim);
+	imwrite(restoredPath, restored_image);
 	//waitKey();
 
 	return 0;
