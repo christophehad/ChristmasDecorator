@@ -25,7 +25,7 @@ void insertMistleToe(const Mat& input, Mat& output, const Mat& mistletoe, const 
 	mistleRegion.convertTo(mistleRegion, CV_32FC3);
 	resizedAlpha.convertTo(resizedAlpha, CV_32FC3, 1.0 / 255);
 
-	cout << resizedAlpha.type() << " " << resizedMistle.type() << endl;
+	//cout << resizedAlpha.type() << " " << resizedMistle.type() << endl;
 	multiply(resizedAlpha, resizedMistle, resizedMistle);
 	multiply(Scalar::all(1.0) - resizedAlpha, mistleRegion, mistleRegion);
 
@@ -43,7 +43,7 @@ void insertMistleToe(const Mat& input, Mat& output, const Mat& mistletoe, const 
 }
 
 void decorateWindows(const Mat& input, const Mat& labels, Mat& output) {
-	vector <RectRegion> windows = getRegions(labels, CD::windowColor);
+	vector <RectRegion> windows = getRegions(labels, CD::windowColorLower,CD::windowColorUpper);
 
 	//vector <RectRegion> windows = getRegions(labels, Vec3b(0,255,0)); // trying to decorate from masks
 	
