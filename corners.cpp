@@ -201,7 +201,6 @@ Mat canny(const Mat& Ic, float s1, float s2)
 			}
 		}
 	}
-	Max;
 	// Propagate seeds
 
 	// Max contains pixels that are set if they are weak or strong edges
@@ -345,7 +344,7 @@ void findRectRegions(vector <Point> pByY, vector <RectRegion>& toFill, const Mat
 	filterPoints(pByY, 0.5 * minCorner); cout << "Threshold:" << 0.1 * minCorner << " Min corner:" << minCorner << endl;
 	sort(pByY.begin(), pByY.end(), isLessByY);
 	//cout << "Filtered of length: " << pByY.size() << " \n" << pByY << endl;
-	for (auto u : pByY) { circle(I, u, 8, { 0,0,255 }); } imshow("Filtered corners", tmp);
+	for (auto u : pByY) { circle(I, u, 8, { 0,0,255 }); } //imshow("Filtered corners", tmp);
 	vector <Point> pByX(pByY);
 	int n = pByY.size();
 	sort(pByX.begin(), pByX.end(), isLessByX);
