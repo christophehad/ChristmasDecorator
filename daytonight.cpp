@@ -195,7 +195,7 @@ Mat darkenSkyOfImage(const Mat& image)
         if (percentage > old_percentage)
         {
             old_percentage = percentage;
-            cout << percentage << endl;
+            //cout << percentage << endl;
             patch.copyTo(sky_patch);
         }
 
