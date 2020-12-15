@@ -42,11 +42,6 @@ float convol(const Mat& input, vector<vector<float>> & mask, int k, int i, int j
 	return res;
 }
 
-// Step 1: complete gradient and threshold
-// Step 2: complete sobel
-// Step 3: complete canny (recommended substep: return Max instead of C to check it) 
-// Step 4 (facultative, for extra credits): implement a Harris Corner detector
-
 // Raw gradient. No denoising
 void gradient(const Mat&Ic, Mat& G2)
 {
