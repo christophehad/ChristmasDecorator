@@ -37,3 +37,4 @@ out/build/x64-Debug (default)
 
 .vscode
 build
+/results
