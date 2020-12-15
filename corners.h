@@ -17,22 +17,25 @@ struct RectRegion {
 };
 
 // 1 % seems the best
-const double cornersMarginThresh = 0.01;
+const double cornersMarginThresh = 0.03;
 
 // sometimes a small one (150) detects many duplicate corners in small images
-const int HARRIS_THRESH = 170;
+const int HARRIS_THRESH = 150;
 
 // allow for rect regions to intersect
-const bool WITH_INTERS = true;
+const bool WITH_INTERS = false;
+
+// minimum dimension of window in % of width/height of image
+const double minDimRatio = 0.05;
 
 // important for debugging
 string type2str(int type);
 
 // main function that returns a vector of the regions corresponding to the label with color
 //	color should be in BGR
-vector<RectRegion> getRegions(const Mat& I, Vec3b color);
+vector<RectRegion> getRegions(const Mat& I, Vec3b colorLower, Vec3b colorUpper);
 
-Mat selectColor(const Mat& Ic, Vec3b color);
+Mat selectColor(const Mat& Ic, Vec3b colorLower, Vec3b colorUpper);
 
 float convol(const Mat& input, vector<vector<float>>& mask, int k, int i, int j, float weight);
 

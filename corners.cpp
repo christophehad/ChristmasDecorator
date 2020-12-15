@@ -231,8 +231,8 @@ vector<Point> harris(const Mat& Ic) {
 
 	vector<Point> corners;
 
-	int blockSize = 2;
-	int apertureSize = 3;
+	int blockSize = 10;
+	int apertureSize = 11;
 	double k = 0.04;
 	Mat dst = Mat::zeros(Ic.size(), CV_32FC1);
 	cornerHarris(Ic, dst, blockSize, apertureSize, k);
@@ -255,10 +255,10 @@ vector<Point> harris(const Mat& Ic) {
 }
 
 
-Mat selectColor(const Mat& Ic, Vec3b color) {
+Mat selectColor(const Mat& Ic, Vec3b colorLower, Vec3b colorUpper) {
 	Mat mask, goodMask, out; 
 
-	inRange(Ic, color, color, mask);
+	inRange(Ic, colorLower, colorUpper, mask);
 	vector<Mat> tmp = { mask,mask,mask };
 	merge(tmp, goodMask);
 
@@ -282,6 +282,17 @@ bool isLessByX(const Point& p1, const Point& p2) {
 	}
 }
 
+bool isLessByY(const Point& p1, const Point& p2) {
+	if (p1.y < p2.y)
+		return true;
+	else {
+		if (p1.y == p2.y)
+			return p1.x < p2.x;
+		else
+			return false;
+	}
+}
+
 bool isInAnyRegion(Point p, const vector <RectRegion>& regions) {
 	bool ret = false;
 
@@ -300,15 +311,51 @@ bool isInAnyRegion(Point p, const vector <RectRegion>& regions) {
 	return ret;
 }
 
+void filterPoints(vector <Point>& v, int threshold) {
+	auto cur = v.begin();
+
+	// remove close points
+	while (cur != v.end()) {
+		auto next = cur + 1;
+		while (next != v.end()) {
+			if (sqrt((cur->x - next->x) * (cur->x - next->x) + (cur->y - next->y) * (cur->y - next->y)) <= threshold)
+				next = v.erase(next);
+			else
+				next++;
+		}
+		cur++;
+	}
+
+	cur = v.begin();
+	//align points on same horizontal line
+	while (cur != v.end()) {
+		auto next = cur + 1;
+		while (next != v.end()) {
+			if (next->y-cur->y <= threshold)
+				next->y = cur->y;
+			next++;
+		}
+		cur++;
+	}
+}
+
 // TODO : account for small variations in corners search (and update the startX accordingly)
 // MAYBE? can always check if there's another candidate for handling errors?
 void findRectRegions(vector <Point> pByY, vector <RectRegion>& toFill, const Mat & I) {
+	int minDim = I.cols < I.rows ? I.cols : I.rows;
+	int minCorner = minDimRatio * minDim;
+
+	int cumMin = 0;
 	// the vectors pBy.. are the points sorted by ..
+	Mat tmp = I;
+
+	filterPoints(pByY, 0.5 * minCorner); cout << "Threshold:" << 0.1 * minCorner << " Min corner:" << minCorner << endl;
+	sort(pByY.begin(), pByY.end(), isLessByY);
+	cout << "Filtered of length: " << pByY.size() << " \n" << pByY << endl;
+	for (auto u : pByY) { circle(I, u, 8, { 0,0,255 }); } imshow("Filtered corners", tmp);
 	vector <Point> pByX(pByY);
 	int n = pByY.size();
 	sort(pByX.begin(), pByX.end(), isLessByX);
-
-	int minDim = I.cols < I.rows ? I.cols : I.rows;
 
 	//int xMargin = (int) (cornersMarginThresh * I.cols);
 	//int yMargin = (int) (cornersMarginThresh * I.rows);
@@ -328,7 +375,7 @@ void findRectRegions(vector <Point> pByY, vector <RectRegion>& toFill, const Mat
 			for (int j = i + 1; j < n; j++) {
 				auto& candidate = pByY[j];
 				if (!isInAnyRegion(candidate, toFill)) {
-					if (abs(candidate.x - startX) <= xMargin) {
+					if (abs(candidate.x - startX) <= xMargin && (candidate.y - startY)>=minCorner) {
 						int minX = candidate.x < startX ? candidate.x : startX;
 						startX = minX; leftCorner = Point(minX, candidate.y);
 						break;
@@ -341,7 +388,7 @@ void findRectRegions(vector <Point> pByY, vector <RectRegion>& toFill, const Mat
 			for (int j = xIdx + 1; j < n; j++) {
 				auto& candidate = pByX[j];
 				if (!isInAnyRegion(candidate, toFill)) {
-					if (abs(candidate.y - startY) <= yMargin) {
+					if (abs(candidate.y - startY) <= yMargin && (candidate.x - startX) >= minCorner) {
 						int minY = candidate.y < startY ? candidate.y : startY;
 						startY = minY; rightCorner = Point(candidate.x, minY);
 						width = candidate.x - startX;
@@ -356,15 +403,22 @@ void findRectRegions(vector <Point> pByY, vector <RectRegion>& toFill, const Mat
 			}
 
 			if (height != 0 && width != 0) {
-				RectRegion region; region.corner = p; region.height = height; region.width = width;
+				int curMinDim = height < width ? height : width;
+				if (cumMin != 0) {
+					double average = 1.0 * cumMin / toFill.size();
+					if ((curMinDim / average - 1) >= 0.5) // if the current minDim is at least 2 more than the average skip
+						continue;
+				}
+				cumMin += curMinDim;
+				RectRegion region; region.corner = Point(startX,startY); region.height = height; region.width = width;
 				toFill.push_back(region);
 			}
 		}
 	}
 }
 
-vector<RectRegion> getRegions(const Mat& I, Vec3b color) {
-	Mat selectedRegion = selectColor(I, color);
+vector<RectRegion> getRegions(const Mat& I, Vec3b colorLower, Vec3b colorUpper) {
+	Mat selectedRegion = selectColor(I, colorLower,colorUpper);
 
 	// Harris requires the input to be in grayscale
 	Mat forHarris; cvtColor(selectedRegion, forHarris, COLOR_RGB2GRAY);
@@ -383,7 +437,7 @@ int debugCorners()
 	imshow("Input", I);
 
 	Vec3b color = { 255, 85, 0 };
-	vector<RectRegion> regions = getRegions(I, color);
+	vector<RectRegion> regions = getRegions(I, color,color);
 
 	for (auto& r : regions) {
 		rectangle(out, Rect(r.corner.x, r.corner.y, r.width, r.height), color);
